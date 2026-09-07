@@ -462,7 +462,14 @@ i { display: inline-flex; align-items: center; justify-content: center; }
 
 /* ===== 新增：群聊 ===== */
 .group-list{padding:10px 14px 24px;display:flex;flex-direction:column;gap:10px;overflow:auto}
-.group-card{position:relative;border:1px solid var(--hair);background:var(--card);backdrop-filter:blur(18px);border-radius:18px;padding:13px;display:flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 5px 18px rgba(20,24,40,.05)}
+.group-card-wrap{position:relative;overflow:hidden;border-radius:18px;touch-action:pan-y;}
+.group-card-actions{position:absolute;top:0;right:0;bottom:0;width:140px;display:flex;z-index:1;}
+.group-card-actions button{flex:1;border:none;color:#fff;font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;}
+.group-card-actions button i{font-size:16px;}
+.gca-pin{background:#ff9500;}
+.gca-del{background:#ff3b30;}
+.group-pin-badge{position:absolute;top:6px;right:8px;color:#ff9500;font-size:11px;}
+.group-card{position:relative;z-index:2;margin-bottom:0;border:1px solid var(--hair);background:var(--card);backdrop-filter:blur(18px);border-radius:18px;padding:13px;display:flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 5px 18px rgba(20,24,40,.05)}
 .group-card:active{transform:scale(.99)}
 .group-avatars{display:flex;align-items:center;min-width:58px}
 .group-avatars img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--card);margin-left:-8px;background:var(--accent-soft)}
@@ -475,8 +482,8 @@ i { display: inline-flex; align-items: center; justify-content: center; }
 .group-back{width:34px;height:34px;border-radius:50%;border:1px solid var(--hair);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer}
 .group-head-avatars{display:flex;min-width:48px}.group-head-avatars img{width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--card);margin-left:-7px}.group-head-avatars img:first-child{margin-left:0}
 .group-head-title{min-width:0;flex:1}.group-head-title b{font-size:14px}.group-head-title small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
-.group-messages{position:relative;flex:1;min-height:0;overflow:auto;padding:12px 12px 112px;display:flex;flex-direction:column;gap:10px}
-.group-sender{font-size:11px;color:var(--muted);margin:0 4px 3px}.chat-row.me .group-sender{text-align:right}.group-composer{position:absolute;left:0;right:0;bottom:calc(70px + env(safe-area-inset-bottom));z-index:12;border-top:1px solid var(--hair);background:var(--card);padding:8px 10px 8px}.group-plus-panel,.group-emoji-panel{position:absolute;left:10px;right:10px;bottom:calc(134px + env(safe-area-inset-bottom));z-index:20;display:none;border:1px solid var(--hair);background:var(--card);border-radius:16px;margin:0 0 8px;padding:10px}.group-plus-panel.show,.group-emoji-panel.show{display:block}.group-plus-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.group-plus-item{display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px;border:1px solid var(--hair);border-radius:12px;background:rgba(255,255,255,.35);font-size:10px;cursor:pointer}.group-plus-item i{font-size:18px;color:var(--accent)}.group-composer-row{display:flex;align-items:flex-end;gap:6px}.group-composer-row textarea{flex:1;min-height:38px;max-height:110px;resize:none;border:1px solid var(--hair);border-radius:18px;padding:9px 12px;background:rgba(255,255,255,.65);font:inherit;outline:none}.group-emoji-tabs{display:flex;gap:6px;margin-bottom:8px}.group-emoji-tabs button{border:none;background:transparent;padding:7px 10px;border-radius:10px;color:var(--muted);cursor:pointer}.group-emoji-tabs button.active{background:var(--accent-soft);color:var(--accent);font-weight:700}.group-emoji-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-height:180px;overflow:auto}.group-emoji-grid button{border:none;background:transparent;font-size:21px;padding:6px;border-radius:9px;cursor:pointer}.group-kaomoji{grid-template-columns:repeat(2,1fr)}.group-kaomoji button{font-size:13px;border:1px solid var(--hair);background:rgba(255,255,255,.35)}.group-stickers{grid-template-columns:repeat(4,1fr)}.group-stickers img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:10px;cursor:pointer;background:rgba(255,255,255,.25)}
+.group-messages{position:relative;flex:1;min-height:0;overflow:auto;padding:12px 12px 14px;display:flex;flex-direction:column;gap:10px}
+.group-sender{font-size:11px;color:var(--muted);margin:0 4px 3px}.chat-row.me .group-sender{text-align:right}.group-composer{flex:none;border-top:1px solid var(--hair);background:var(--card);padding:8px 10px calc(78px + env(safe-area-inset-bottom))}.group-plus-panel,.group-emoji-panel{flex:none;display:none;border-top:1px solid var(--hair);background:var(--card);padding:10px}.group-plus-panel.show,.group-emoji-panel.show{display:block}.group-plus-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.group-plus-item{display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px;border:1px solid var(--hair);border-radius:12px;background:rgba(255,255,255,.35);font-size:10px;cursor:pointer}.group-plus-item i{font-size:18px;color:var(--accent)}.group-composer-row{display:flex;align-items:flex-end;gap:6px}.group-composer-row textarea{flex:1;min-height:38px;max-height:110px;resize:none;border:1px solid var(--hair);border-radius:18px;padding:9px 12px;background:rgba(255,255,255,.65);font:inherit;outline:none}.group-emoji-tabs{display:flex;gap:6px;margin-bottom:8px}.group-emoji-tabs button{border:none;background:transparent;padding:7px 10px;border-radius:10px;color:var(--muted);cursor:pointer}.group-emoji-tabs button.active{background:var(--accent-soft);color:var(--accent);font-weight:700}.group-emoji-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-height:180px;overflow:auto}.group-emoji-grid button{border:none;background:transparent;font-size:21px;padding:6px;border-radius:9px;cursor:pointer}.group-kaomoji{grid-template-columns:repeat(2,1fr)}.group-kaomoji button{font-size:13px;border:1px solid var(--hair);background:rgba(255,255,255,.35)}.group-stickers{grid-template-columns:repeat(4,1fr)}.group-stickers img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:10px;cursor:pointer;background:rgba(255,255,255,.25)}
 .group-create-list{max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:7px;margin-top:8px}.group-member-row{display:flex;align-items:center;gap:8px;border:1px solid var(--hair);border-radius:12px;padding:8px}.group-member-row img{width:34px;height:34px;border-radius:50%;object-fit:cover}.group-member-row label{flex:1;font-size:13px}.group-nick{width:100px}.group-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}.group-settings-grid label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px}.group-settings-grid input{width:100%}.group-member-row{background:rgba(255,255,255,.38);flex-wrap:wrap}.group-member-row .group-nick{width:100%;min-width:0}.group-member-row label{min-width:0}.group-member-row input[type=number]{width:78px}
 
 @media(max-width:380px){.group-plus-grid{grid-template-columns:repeat(4,1fr)}.group-emoji-grid{grid-template-columns:repeat(6,1fr)}}
@@ -529,7 +536,7 @@ i { display: inline-flex; align-items: center; justify-content: center; }
 .letters-filter{grid-template-columns:repeat(4,1fr)!important;width:100%!important}
 .letters-filter button{min-height:48px!important}
 #view-groups .group-chat-view{inset:0!important;height:auto!important}
-#view-groups .group-messages{padding-bottom:140px}
+/* 已改成真实的 flex 布局撑开输入框，不再需要靠固定值硬顶，这条规则废弃 */
 .group-chat-view .group-composer{box-shadow:none}
 .music-panel{overflow:hidden!important;padding-bottom:12px!important}
 .music-head{position:sticky;top:0;z-index:8;background:rgba(245,247,252,.84);backdrop-filter:blur(20px);padding-bottom:6px}
@@ -631,9 +638,7 @@ i { display: inline-flex; align-items: center; justify-content: center; }
   background: var(--bg, #f5f6fa);
   color: var(--ink);
 }
-.group-plus-panel, .group-emoji-panel {
-  bottom: calc(134px + env(safe-area-inset-bottom)) !important;
-}
+/* 面板已经改成正常文档流跟着输入框走，不再需要单独定位，这条规则废弃 */
 .settings-char-switcher {
   margin: 0 0 10px;
   padding: 10px 12px;
@@ -1285,7 +1290,11 @@ function renderChat(animateCount=0){
   const pn = document.getElementById('topbarTitle');
   if (pn) pn.textContent = nameOf('partner');
   const av = document.getElementById('topbarAvatar');
-  if (av) av.src = avatarOf('partner');
+  if (av) {
+    av.style.display = 'block';
+    av.onerror = ()=>{ av.onerror=null; av.src = AVATAR_PLACEHOLDER; };
+    av.src = avatarOf('partner');
+  }
   renderStatusTag();
   setTopbarSub();
   const box = document.getElementById('chatMessages');
@@ -1419,8 +1428,7 @@ function msgHTML(m){
     }
   });
   box.addEventListener('dblclick', e=>{
-    const ava = e.target.closest('.cr-ava[data-from="partner"]');
-    if (ava) sendPoke();
+    // 拍一拍已经改到左上角头像那里了，这里不再重复触发
   });
 })();
 
@@ -1566,6 +1574,7 @@ function clearQuote(){
   document.getElementById('ccQuoteBar').style.display = 'none';
 }
 document.getElementById('ccQuoteRemove').addEventListener('click', clearQuote);
+document.addEventListener('click', e=>{ if (e.target.closest('#groupQuoteRemove')) clearGroupQuote(); });
 
 async function sendChatMessage(){
   if (!hasChatContent()) return;
@@ -1711,6 +1720,7 @@ function openMessageActionSheet(msgId){
     <div class="sheet-btn-row" style="flex-direction:column;gap:8px;">
       <button id="quoteMsgBtn" style="width:100%;justify-content:center;"><i class="fa-solid fa-quote-left"></i> 引用</button>
       ${canRecall ? `<button id="recallMsgBtn" style="width:100%;justify-content:center;color:var(--danger);"><i class="fa-solid fa-rotate-left"></i> 撤回</button>` : ''}
+      <button id="deleteMsgBtn" style="width:100%;justify-content:center;color:var(--danger);"><i class="fa-solid fa-trash"></i> 删除</button>
       <button onclick="closeSheet()" style="width:100%;justify-content:center;">取消</button>
     </div>
   `, ()=>{
@@ -1724,6 +1734,13 @@ function openMessageActionSheet(msgId){
       msg.recalled = true;
       delete msg.text; delete msg.image; delete msg.video; delete msg.sticker; delete msg.money; delete msg.file; delete msg.quote;
       await saveAll(); renderChat();
+    });
+    document.getElementById('deleteMsgBtn').addEventListener('click', ()=>{
+      closeSheet();
+      confirmModal('删除这条消息？删除后不会留下任何痕迹，此操作不可撤销。', async ()=>{
+        state.messages = state.messages.filter(m=>m.id!==msgId);
+        await saveAll(); renderChat();
+      });
     });
   });
 }
@@ -1839,7 +1856,7 @@ async function letPartnerSpeakInChat(){
   }, delayMs);
 }
 document.getElementById('topbarCallBtn').addEventListener('click', startOutgoingCall);
-document.getElementById('topbarLeft').addEventListener('click', sendPoke);
+document.getElementById('topbarAvatar').addEventListener('dblclick', sendPoke);
 
 /* 拍一拍 */
 async function sendPoke(){
@@ -2122,8 +2139,8 @@ function renderLetterFilter(){
   });
 }
 
-let lettersPageSize = 15;
-let lettersShownCount = 15;
+let lettersPageSize = 5;
+let lettersShownCount = 5;
 function renderLetters(){
   const list = document.getElementById('lettersList');
   renderLetterFilter();
@@ -3618,6 +3635,7 @@ function switchView(name){
   document.querySelectorAll('.view').forEach(v=> v.classList.add('hidden'));
   document.getElementById('view-'+name).classList.remove('hidden');
   document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.view===name));
+  document.getElementById('topbar').style.display = ''; // 群聊内部会把外层topbar藏起来，切换到任何tab都要先强制恢复，不然会一直卡在隐藏状态
   const showChatHeader = name==='chat';
   document.getElementById('topbarAvatar').style.display = showChatHeader ? 'block' : 'none';
   if (!showChatHeader) document.getElementById('topbarTitle').textContent = viewTitles[name];
@@ -3850,12 +3868,14 @@ function groupRenderMessages(g, animateCount=0){
   if(!box)return;
   const msgs=state.groupMessages.filter(m=>m.groupId===g.id).sort((a,b)=>a.time-b.time);
   box.innerHTML=msgs.length?msgs.map(m=>{
+    if (m.recalled) return `<div class="chat-sysline" data-id="${m.id}">${m.from==='user'?'你':escapeHTML(m.senderNickname||'成员')}撤回了一条消息</div>`;
     const me=m.from==='user';
     const member=g.members.find(x=>x.roleId===m.from);
     const c=member?state.characters.find(x=>x.id===member.roleId):null;
     const ava=me?(state.me.avatar||AVATAR_PLACEHOLDER):(member?.avatar||c?.partner.avatar||AVATAR_PLACEHOLDER);
     const nick=me?'我':(member?.nickname||c?.partner.name||'成员');
     const rowClass = me ? 'me' : 'partner';
+    const quoteHtml = m.quote ? `<div class="cr-quote">${escapeHTML(m.quote.senderNickname||nameOf(m.quote.from))}：${escapeHTML((m.quote.text||'').length>28?m.quote.text.slice(0,28)+'…':m.quote.text)}</div>` : '';
     let inner = '';
     if (m.file){
       inner = `<div class="chat-bubble file ${me?'sent':'recv'}" data-mid="${m.id}"><div class="file-icon"><i class="fa-solid fa-file"></i></div><div class="file-name">${escapeHTML(m.file.name)}</div></div>`;
@@ -3864,13 +3884,25 @@ function groupRenderMessages(g, animateCount=0){
       if (m.image) parts.push(`<img class="cr-img" src="${m.image}" data-imgzoom="${m.image}">`);
       if (m.video) parts.push(`<video class="cr-video" controls src="${m.video}"></video>`);
       if (m.sticker) parts.push(`<img class="cr-sticker" src="${m.sticker}" data-imgzoom="${m.sticker}">`);
-      if (m.text) parts.push(`<div class="chat-bubble ${me?'sent':'recv'}">${escapeHTML(m.text)}</div>`);
+      if (m.text) parts.push(`<div class="chat-bubble ${me?'sent':'recv'}">${quoteHtml}${escapeHTML(m.text)}</div>`);
       inner = parts.join('');
     }
     const readLine = m.readStatus==='no_reply' ? `<div class="cr-readonly">${escapeHTML(nick)} 已读</div>` : '';
+    let metaLine = '';
+    if (!m.readStatus || m.readStatus==='read'){
+      const parts = [fmtTime(m.time)];
+      if (me && m.groupReaders && m.groupReaders.length){
+        const readNames = m.groupReaders.filter(r=>r.read).map(r=>r.nickname);
+        const unreadNames = m.groupReaders.filter(r=>!r.read).map(r=>r.nickname);
+        if (unreadNames.length===0) parts.push(readNames.join('、')+'已读');
+        else if (readNames.length===0) parts.push('未读');
+        else parts.push(readNames.join('、')+'已读，'+unreadNames.join('、')+'未读');
+      }
+      metaLine = `<div class="cr-meta">${parts.join(' · ')}</div>`;
+    }
     return `<div class="chat-row ${rowClass}" data-id="${m.id}">
       <img class="cr-ava" src="${ava}">
-      <div class="cr-col"><div class="group-sender">${escapeHTML(nick)}</div>${inner}${readLine}</div>
+      <div class="cr-col"><div class="group-sender">${escapeHTML(nick)}</div>${inner}${readLine}${metaLine}</div>
     </div>`;
   }).join(''):`<div class="chat-empty"><i class="fa-solid fa-comment-dots"></i><div>还没有群消息</div></div>`;
   const prevCount = lastRenderedGroupMsgCount[g.id] || 0;
@@ -3903,31 +3935,144 @@ function groupRenderMessages(g, animateCount=0){
       a.href = msg.file.data; a.download = msg.file.name; a.click();
     }
   });
+  // 长按/左滑：引用、撤回、删除（这次直接照搬单聊那套手势实现——用 pointer capture 抢住手指，
+  // 判定阈值更低更跟手，不再被浏览器的原生滚动抢走手势）
+  let pressTimer = null, pressedRow = null;
+  let startX = 0, startY = 0, tracking = false, swiping = false, quoteReady = false;
+  const resetRow = (row)=>{ if (!row) return; row.classList.remove('swiping'); row.style.transform = ''; };
+  const clearPress = (keepRow=false)=>{
+    if (pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+    if (pressedRow && swiping) resetRow(pressedRow);
+    if (!keepRow) pressedRow = null;
+    tracking = false; swiping = false; quoteReady = false;
+  };
+  view.addEventListener('pointerdown', e=>{
+    if (e.isPrimary === false) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const row = e.target.closest('.chat-row');
+    if (!row || !row.dataset.id) return;
+    clearPress();
+    pressedRow = row; startX = e.clientX; startY = e.clientY; tracking = true;
+    try { row.setPointerCapture?.(e.pointerId); } catch (_) {}
+    pressTimer = setTimeout(()=>{
+      if (!tracking || swiping || !pressedRow) return;
+      if (navigator.vibrate) navigator.vibrate(15);
+      openGroupMessageActionSheet(pressedRow.dataset.id);
+      pressTimer = null;
+    }, 480);
+  }, {passive:true});
+  view.addEventListener('pointermove', e=>{
+    if (!tracking || !pressedRow || e.isPrimary === false) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    if (!swiping){
+      if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) * 1.05){ clearPress(); return; }
+      if (dx < -8 && Math.abs(dx) > Math.abs(dy) * 1.05){
+        swiping = true;
+        if (pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+        pressedRow.classList.add('swiping');
+        try { pressedRow.setPointerCapture?.(e.pointerId); } catch (_) {}
+      } else { return; }
+    }
+    if (e.cancelable) e.preventDefault();
+    const raw = Math.max(-88, Math.min(0, dx));
+    const distance = Math.abs(raw);
+    const eased = distance <= 52 ? raw : -52 - (distance - 52) * 0.28;
+    pressedRow.style.transform = `translate3d(${eased}px,0,0)`;
+    quoteReady = distance >= 42;
+  }, {passive:false});
+  const finishGesture = (e)=>{
+    if (!pressedRow || e?.isPrimary === false) return;
+    const row = pressedRow; const id = row.dataset.id; const shouldQuote = swiping && quoteReady;
+    try { row.releasePointerCapture?.(e.pointerId); } catch (_) {}
+    resetRow(row); clearPress();
+    if (shouldQuote){
+      const g = state.groupChats.find(x=>x.id===activeGroupId);
+      const msg = state.groupMessages.find(m=>m.id===id);
+      if (msg && g && !msg.recalled) setGroupQuote(msg, g);
+    }
+  };
+  view.addEventListener('pointerup', finishGesture, {passive:true});
+  view.addEventListener('pointercancel', e=>{
+    if (pressedRow){ try { pressedRow.releasePointerCapture?.(e.pointerId); } catch (_) {} }
+    clearPress();
+  }, {passive:true});
 })();
-function groupRenderEmoji(){const box=document.getElementById('groupEmojiGrid');if(!box)return;if(groupEmojiTab==='emoji'){box.className='group-emoji-grid';box.innerHTML=EMOJI_CATEGORIES[0].list.concat(EMOJI_CATEGORIES[1].list,EMOJI_CATEGORIES[2].list).map(x=>`<button data-gemoji="${x}">${x}</button>`).join('');}else if(groupEmojiTab==='kaomoji'){box.className='group-emoji-grid group-kaomoji';box.innerHTML=state.kaomoji.map(x=>`<button data-gemoji="${escapeHTML(x)}">${escapeHTML(x)}</button>`).join('');}else{box.className='group-emoji-grid group-stickers';box.innerHTML=state.stickers.map((x,i)=>`<img src="${x}" data-gsticker="${i}">`).join('')||`<div style="color:var(--muted);font-size:11px;grid-column:1/-1;text-align:center;padding:20px">暂无表情包</div>`;}box.querySelectorAll('[data-gemoji]').forEach(b=>b.onclick=()=>{document.getElementById('groupInput').value+=b.dataset.gemoji;document.getElementById('groupInput').focus();});box.querySelectorAll('[data-gsticker]').forEach(img=>img.onclick=()=>sendGroupSticker(state.stickers[+img.dataset.gsticker]));}
-function adjustGroupChatLayout(){
-  const tabbar = document.querySelector('.tabbar');
-  const composer = document.querySelector('#view-groups .group-composer');
-  const messages = document.getElementById('groupMessages');
-  const plusPanel = document.getElementById('groupPlusPanel');
-  const emojiPanel = document.getElementById('groupEmojiPanel');
-  if (!tabbar || !composer) return;
-  const tabbarH = tabbar.offsetHeight;
-  composer.style.bottom = tabbarH + 'px';
-  const composerH = composer.offsetHeight;
-  if (messages) messages.style.paddingBottom = (composerH + 14) + 'px';
-  const panelBottom = (tabbarH + composerH + 6) + 'px';
-  if (plusPanel) plusPanel.style.bottom = panelBottom;
-  if (emojiPanel) emojiPanel.style.bottom = panelBottom;
-  // 改完 padding 之后消息区的可滚动高度变了，之前算好的 scrollTop 已经不准了，这里再滚一次到底部
-  if (messages) {
-    messages.scrollTop = messages.scrollHeight;
-    requestAnimationFrame(()=>{ messages.scrollTop = messages.scrollHeight; });
-  }
+function openGroupMessageActionSheet(msgId){
+  const g = state.groupChats.find(x=>x.id===activeGroupId);
+  const msg = state.groupMessages.find(m=>m.id===msgId);
+  if (!g || !msg || msg.recalled) return;
+  const canRecall = msg.from==='user';
+  openSheet(`
+    <h2>消息操作</h2>
+    <div class="sheet-btn-row" style="flex-direction:column;gap:8px;">
+      <button id="gQuoteMsgBtn" style="width:100%;justify-content:center;"><i class="fa-solid fa-quote-left"></i> 引用</button>
+      ${canRecall ? `<button id="gRecallMsgBtn" style="width:100%;justify-content:center;color:var(--danger);"><i class="fa-solid fa-rotate-left"></i> 撤回</button>` : ''}
+      <button id="gDeleteMsgBtn" style="width:100%;justify-content:center;color:var(--danger);"><i class="fa-solid fa-trash"></i> 删除</button>
+      <button onclick="closeSheet()" style="width:100%;justify-content:center;">取消</button>
+    </div>
+  `, ()=>{
+    document.getElementById('gQuoteMsgBtn').addEventListener('click', ()=>{ closeSheet(); setGroupQuote(msg, g); });
+    const recallBtn = document.getElementById('gRecallMsgBtn');
+    if (recallBtn) recallBtn.addEventListener('click', async ()=>{
+      closeSheet();
+      msg.recalled = true;
+      delete msg.text; delete msg.image; delete msg.video; delete msg.sticker; delete msg.file; delete msg.quote;
+      await saveAll(); groupRenderMessages(g);
+    });
+    document.getElementById('gDeleteMsgBtn').addEventListener('click', ()=>{
+      closeSheet();
+      confirmModal('删除这条消息？删除后不会留下任何痕迹，此操作不可撤销。', async ()=>{
+        state.groupMessages = state.groupMessages.filter(m=>m.id!==msgId);
+        await saveAll(); groupRenderMessages(g);
+      });
+    });
+  });
 }
-window.addEventListener('resize', ()=>{ if (activeGroupId) adjustGroupChatLayout(); });
-function renderGroups(){syncGroupMembers();const list=document.getElementById('groupListView'),chat=document.getElementById('groupChatView');if(activeGroupId){const g=state.groupChats.find(x=>x.id===activeGroupId);if(g){renderGroupChat(g);return;}activeGroupId=null;}chat.style.display='none';list.style.display='block';list.innerHTML=`<div class="group-list">${state.groupChats.length?state.groupChats.slice().sort((a,b)=>(b.lastTime||0)-(a.lastTime||0)).map(g=>{const ms=groupMemberData(g);return `<div class="group-card" data-gid="${g.id}"><div class="group-avatars">${ms.slice(0,4).map(m=>`<img src="${m.c.partner.avatar||AVATAR_PLACEHOLDER}">`).join('')}</div><div class="group-main"><div class="group-name">${escapeHTML(g.name)}(${ms.length})</div><div class="group-preview">${escapeHTML(g.lastMessage||'还没有消息')}</div></div>${g.unreadCount?`<div class="group-unread">${g.unreadCount}</div>`:''}</div>`}).join(''):`<div style="text-align:center;color:var(--muted);padding:50px 20px"><i class="fa-solid fa-user-group" style="font-size:30px;display:block;margin-bottom:10px"></i>还没有群聊</div>`}</div><button class="group-add-fab" id="groupAddFab" title="创建群聊"><i class="fa-solid fa-plus"></i></button>`;list.querySelectorAll('[data-gid]').forEach(c=>c.onclick=()=>{activeGroupId=c.dataset.gid;const g=state.groupChats.find(x=>x.id===activeGroupId);if(g){g.unreadCount=0;saveAll();renderGroups();}});document.getElementById('groupAddFab').onclick=openGroupCreateModal;}
-function renderGroupChat(g){const list=document.getElementById('groupListView'),chat=document.getElementById('groupChatView');list.style.display='none';chat.style.display='flex';const ms=groupMemberData(g);chat.innerHTML=`<div class="group-chat-head"><button class="group-back" id="groupBack"><i class="fa-solid fa-chevron-left"></i></button><div class="group-head-avatars">${ms.slice(0,4).map(m=>`<img src="${m.c.partner.avatar||AVATAR_PLACEHOLDER}">`).join('')}</div><div class="group-head-title"><b>${escapeHTML(g.name)}(${ms.length})</b></div><button class="group-back" id="groupSet"><i class="fa-solid fa-sliders"></i></button></div><div class="group-messages" id="groupMessages"></div><div class="group-composer chat-composer"><div class="group-plus-panel" id="groupPlusPanel"><div class="group-plus-grid"><label class="group-plus-item"><i class="fa-solid fa-image"></i><span>相册</span><input type="file" id="groupImageInline" class="hidden-input" accept="image/*"></label><label class="group-plus-item"><i class="fa-solid fa-camera"></i><span>拍照</span><input type="file" id="groupCameraInline" class="hidden-input" accept="image/*" capture="environment"></label><label class="group-plus-item"><i class="fa-solid fa-video"></i><span>视频</span><input type="file" id="groupVideoInline" class="hidden-input" accept="video/*"></label><button class="group-plus-item" id="groupCallBtn"><i class="fa-solid fa-phone"></i><span>通话</span></button><button class="group-plus-item" id="groupMoneyBtn"><i class="fa-solid fa-gift"></i><span>红包</span></button><button class="group-plus-item" id="groupTransferBtn"><i class="fa-solid fa-money-bill-transfer"></i><span>转账</span></button><button class="group-plus-item" id="groupPokeBtn"><i class="fa-solid fa-hand-pointer"></i><span>拍一拍</span></button><label class="group-plus-item"><i class="fa-solid fa-file"></i><span>文件</span><input type="file" class="hidden-input" id="groupFileInline"></label></div></div><div class="group-emoji-panel" id="groupEmojiPanel"><div class="group-emoji-tabs"><button class="active" data-getab="emoji">表情</button><button data-getab="kaomoji">颜文字</button><button data-getab="sticker">贴纸</button></div><div id="groupEmojiGrid" class="group-emoji-grid"></div></div><div class="group-composer-row"><button class="cc-icon-btn" id="groupPlusBtn"><i class="fa-solid fa-circle-plus"></i></button><textarea id="groupInput" rows="1" placeholder="说点什么…"></textarea><button class="cc-icon-btn" id="groupSpeakBtn" title="让对方发信息"><i class="fa-solid fa-comment-dots"></i></button><button class="cc-icon-btn" id="groupEmojiBtn"><i class="fa-solid fa-face-smile"></i></button><button class="cc-send-btn" id="groupSendBtn"><i class="fa-solid fa-paper-plane"></i></button></div></div>`;groupRenderMessages(g);groupRenderEmoji();adjustGroupChatLayout();const gmBg=document.getElementById('groupMessages');if(gmBg)gmBg.style.backgroundImage=state.settings.chatBg?`url("${state.settings.chatBg}")`:'none';
+function groupRenderEmoji(){const box=document.getElementById('groupEmojiGrid');if(!box)return;if(groupEmojiTab==='emoji'){box.className='group-emoji-grid';box.innerHTML=EMOJI_CATEGORIES[0].list.concat(EMOJI_CATEGORIES[1].list,EMOJI_CATEGORIES[2].list).map(x=>`<button data-gemoji="${x}">${x}</button>`).join('');}else if(groupEmojiTab==='kaomoji'){box.className='group-emoji-grid group-kaomoji';box.innerHTML=state.kaomoji.map(x=>`<button data-gemoji="${escapeHTML(x)}">${escapeHTML(x)}</button>`).join('');}else{box.className='group-emoji-grid group-stickers';box.innerHTML=state.stickers.map((x,i)=>`<img src="${x}" data-gsticker="${i}">`).join('')||`<div style="color:var(--muted);font-size:11px;grid-column:1/-1;text-align:center;padding:20px">暂无表情包</div>`;}box.querySelectorAll('[data-gemoji]').forEach(b=>b.onclick=()=>{document.getElementById('groupInput').value+=b.dataset.gemoji;document.getElementById('groupInput').focus();});box.querySelectorAll('[data-gsticker]').forEach(img=>img.onclick=()=>sendGroupSticker(state.stickers[+img.dataset.gsticker]));}
+/* 群聊输入框已经改成跟单聊一样的普通文档流布局，不再需要 JS 动态量高度定位，这个函数废弃删除 */
+
+function renderGroups(){syncGroupMembers();const list=document.getElementById('groupListView'),chat=document.getElementById('groupChatView');if(activeGroupId){const g=state.groupChats.find(x=>x.id===activeGroupId);if(g){renderGroupChat(g);return;}activeGroupId=null;}
+  const tb=document.getElementById('topbar');if(tb)tb.style.display='';
+  const tt=document.getElementById('topbarTitle');if(tt)tt.textContent='群聊';
+  chat.style.display='none';list.style.display='block';list.innerHTML=`<div class="group-list">${state.groupChats.length?state.groupChats.slice().sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.lastTime||0)-(a.lastTime||0)).map(g=>{const ms=groupMemberData(g);return `<div class="group-card-wrap" data-gwrap="${g.id}"><div class="group-card-actions"><button class="gca-pin" data-pin="${g.id}"><i class="fa-solid fa-thumbtack"></i>${g.pinned?'取消置顶':'置顶'}</button><button class="gca-del" data-del="${g.id}"><i class="fa-solid fa-trash"></i>删除</button></div><div class="group-card" data-gid="${g.id}">${g.pinned?'<div class="group-pin-badge"><i class="fa-solid fa-thumbtack"></i></div>':''}<div class="group-avatars">${g.avatar?`<img src="${g.avatar}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--card);background:var(--accent-soft);">`:ms.slice(0,4).map(m=>`<img src="${m.c.partner.avatar||AVATAR_PLACEHOLDER}">`).join('')}</div><div class="group-main"><div class="group-name">${escapeHTML(g.name)}(${ms.length})</div><div class="group-preview">${escapeHTML(g.lastMessage||'还没有消息')}</div></div>${g.unreadCount?`<div class="group-unread">${g.unreadCount}</div>`:''}</div></div>`}).join(''):`<div style="text-align:center;color:var(--muted);padding:50px 20px"><i class="fa-solid fa-user-group" style="font-size:30px;display:block;margin-bottom:10px"></i>还没有群聊</div>`}</div><button class="group-add-fab" id="groupAddFab" title="创建群聊"><i class="fa-solid fa-plus"></i></button>`;
+  setupGroupCardSwipe(list);
+  list.querySelectorAll('[data-pin]').forEach(b=>b.addEventListener('click', async e=>{e.stopPropagation();const g=state.groupChats.find(x=>x.id===b.dataset.pin);if(g){g.pinned=!g.pinned;await saveAll();renderGroups();}}));
+  list.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', e=>{e.stopPropagation();const gid=b.dataset.del;confirmModal('删除该群聊？聊天记录也会一并删除，此操作不可撤销。',async()=>{state.groupChats=state.groupChats.filter(x=>x.id!==gid);state.groupMessages=state.groupMessages.filter(m=>m.groupId!==gid);await saveAll();renderGroups();});}));
+  list.querySelectorAll('.group-card[data-gid]').forEach(c=>c.onclick=()=>{
+    const wrap=c.closest('.group-card-wrap');
+    if (wrap && wrap.classList.contains('swiped')){ wrap.classList.remove('swiped'); c.style.transform=''; return; }
+    activeGroupId=c.dataset.gid;const g=state.groupChats.find(x=>x.id===activeGroupId);if(g){g.unreadCount=0;saveAll();renderGroups();}
+  });
+  document.getElementById('groupAddFab').onclick=openGroupCreateModal;
+}
+function setupGroupCardSwipe(list){
+  list.querySelectorAll('.group-card-wrap').forEach(wrap=>{
+    const card = wrap.querySelector('.group-card');
+    let startX=0, dx=0, dragging=false;
+    card.addEventListener('pointerdown', e=>{ startX=e.clientX; dragging=true; card.style.transition='none'; });
+    card.addEventListener('pointermove', e=>{
+      if(!dragging) return;
+      dx = e.clientX - startX;
+      const base = wrap.classList.contains('swiped') ? -140 : 0;
+      const nx = Math.max(-140, Math.min(0, base + dx));
+      card.style.transform = `translateX(${nx}px)`;
+    });
+    const end = ()=>{
+      if(!dragging) return; dragging=false;
+      card.style.transition='transform .2s ease';
+      const base = wrap.classList.contains('swiped') ? -140 : 0;
+      const finalX = Math.max(-140, Math.min(0, base + dx));
+      if (finalX < -70){ wrap.classList.add('swiped'); card.style.transform='translateX(-140px)'; }
+      else { wrap.classList.remove('swiped'); card.style.transform=''; }
+      dx = 0;
+    };
+    card.addEventListener('pointerup', end);
+    card.addEventListener('pointercancel', end);
+  });
+}
+function renderGroupChat(g){const list=document.getElementById('groupListView'),chat=document.getElementById('groupChatView');list.style.display='none';chat.style.display='flex';
+  const tb=document.getElementById('topbar');if(tb)tb.style.display='none';
+  const ms=groupMemberData(g);chat.innerHTML=`<div class="group-chat-head"><button class="group-back" id="groupBack"><i class="fa-solid fa-chevron-left"></i></button><div class="group-head-avatars">${g.avatar?`<img src="${g.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--card);">`:ms.slice(0,4).map(m=>`<img src="${m.c.partner.avatar||AVATAR_PLACEHOLDER}">`).join('')}</div><div class="group-head-title"><b>${escapeHTML(g.name)}(${ms.length})</b></div><button class="group-back" id="groupSet"><i class="fa-solid fa-sliders"></i></button></div><div class="group-messages" id="groupMessages"></div><div class="group-composer chat-composer"><div class="cc-quote-bar" id="groupQuoteBar" style="display:none;"><div class="cc-quote-text" id="groupQuoteText"></div><button id="groupQuoteRemove"><i class="fa-solid fa-xmark"></i></button></div><div class="group-plus-panel" id="groupPlusPanel"><div class="group-plus-grid"><label class="group-plus-item"><i class="fa-solid fa-image"></i><span>相册</span><input type="file" id="groupImageInline" class="hidden-input" accept="image/*"></label><label class="group-plus-item"><i class="fa-solid fa-camera"></i><span>拍照</span><input type="file" id="groupCameraInline" class="hidden-input" accept="image/*" capture="environment"></label><label class="group-plus-item"><i class="fa-solid fa-video"></i><span>视频</span><input type="file" id="groupVideoInline" class="hidden-input" accept="video/*"></label><button class="group-plus-item" id="groupCallBtn"><i class="fa-solid fa-phone"></i><span>通话</span></button><button class="group-plus-item" id="groupMoneyBtn"><i class="fa-solid fa-gift"></i><span>红包</span></button><button class="group-plus-item" id="groupTransferBtn"><i class="fa-solid fa-money-bill-transfer"></i><span>转账</span></button><button class="group-plus-item" id="groupPokeBtn"><i class="fa-solid fa-hand-pointer"></i><span>拍一拍</span></button><label class="group-plus-item"><i class="fa-solid fa-file"></i><span>文件</span><input type="file" class="hidden-input" id="groupFileInline"></label></div></div><div class="group-emoji-panel" id="groupEmojiPanel"><div class="group-emoji-tabs"><button class="active" data-getab="emoji">表情</button><button data-getab="kaomoji">颜文字</button><button data-getab="sticker">贴纸</button></div><div id="groupEmojiGrid" class="group-emoji-grid"></div></div><div class="group-composer-row"><button class="cc-icon-btn" id="groupPlusBtn"><i class="fa-solid fa-circle-plus"></i></button><textarea id="groupInput" rows="1" placeholder="说点什么…"></textarea><button class="cc-icon-btn" id="groupSpeakBtn" title="让对方发信息"><i class="fa-solid fa-comment-dots"></i></button><button class="cc-icon-btn" id="groupEmojiBtn"><i class="fa-solid fa-face-smile"></i></button><button class="cc-send-btn" id="groupSendBtn"><i class="fa-solid fa-paper-plane"></i></button></div></div>`;groupRenderMessages(g);groupRenderEmoji();const gmBg=document.getElementById('groupMessages');if(gmBg)gmBg.style.backgroundImage=state.settings.chatBg?`url("${state.settings.chatBg}")`:'none';
   const toggle=(id)=>{const el=document.getElementById(id);el.classList.toggle('show');return el.classList.contains('show')};document.getElementById('groupPlusBtn').onclick=()=>{document.getElementById('groupEmojiPanel').classList.remove('show');toggle('groupPlusPanel')};document.getElementById('groupEmojiBtn').onclick=()=>{document.getElementById('groupPlusPanel').classList.remove('show');toggle('groupEmojiPanel');groupRenderEmoji()};document.getElementById('groupSpeakBtn').onclick=()=>groupMembersSpeak(g);const groupInputEl=document.getElementById('groupInput');
   const groupSendBtnEl=document.getElementById('groupSendBtn');
   const updateGroupSendBtn=()=>{
@@ -3943,7 +4088,6 @@ function renderGroupChat(g){const list=document.getElementById('groupListView'),
       groupInputEl.style.height='auto';
       groupInputEl.style.height=Math.min(100, groupInputEl.scrollHeight)+'px';
       updateGroupSendBtn();
-      adjustGroupChatLayout();
     });
     groupInputEl.addEventListener('keydown',e=>{
       if(e.key==='Enter' && !e.shiftKey){
@@ -3959,15 +4103,63 @@ function renderGroupChat(g){const list=document.getElementById('groupListView'),
   ['groupImageInline','groupCameraInline','groupVideoInline'].forEach(id=>document.getElementById(id).onchange=e=>{const f=e.target.files[0];if(!f)return;const type=id==='groupVideoInline'?'video':'image';fileToDataURL(f).then(url=>{const mid='gm'+Date.now();state.groupMessages.push({id:mid,groupId:g.id,from:'user',senderNickname:'我',[type]:url,time:Date.now(),readStatus:'read',groupReaders:g.members.map(m=>({roleId:m.roleId,nickname:m.nickname,read:false}))});g.lastMessage=type==='video'?'[视频]':'[图片]';g.lastTime=Date.now();saveAll();groupRenderMessages(g);groupMembersReply(g,mid);});e.target.value='';});
   document.getElementById('groupFileInline').onchange=e=>{const f=e.target.files[0];if(!f)return;fileToDataURL(f).then(data=>{const mid='gm'+Date.now();state.groupMessages.push({id:mid,groupId:g.id,from:'user',senderNickname:'我',file:{name:f.name,data},time:Date.now(),readStatus:'read',groupReaders:g.members.map(m=>({roleId:m.roleId,nickname:m.nickname,read:false}))});g.lastMessage='[文件]';g.lastTime=Date.now();saveAll();groupRenderMessages(g);groupMembersReply(g,mid);});e.target.value='';};
 }
-async function sendGroupText(g,text){const mid='gm'+Date.now();state.groupMessages.push({id:mid,groupId:g.id,from:'user',senderNickname:'我',text,time:Date.now(),readStatus:'read',groupReaders:g.members.map(m=>({roleId:m.roleId,nickname:m.nickname,read:false}))});g.lastMessage=text;g.lastTime=Date.now();await saveAll();groupRenderMessages(g,1);const gi=document.getElementById('groupInput');if(gi){gi.value='';gi.style.height='auto';}if(typeof updateGroupSendBtn==='function')updateGroupSendBtn();groupMembersReply(g,mid);}
+let groupQuotedMessage = null;
+function setGroupQuote(msg, g){
+  groupQuotedMessage = { from: msg.from, senderNickname: msg.senderNickname, text: msg.text || (msg.sticker?'[表情包]':(msg.image?'[图片]':(msg.file?'[文件]':'[消息]'))) };
+  const bar = document.getElementById('groupQuoteBar');
+  if (!bar) return;
+  document.getElementById('groupQuoteText').textContent = `回复 ${groupQuotedMessage.senderNickname}：${groupQuotedMessage.text}`;
+  bar.style.display = 'flex';
+  document.getElementById('groupInput').focus();
+}
+function clearGroupQuote(){
+  groupQuotedMessage = null;
+  const bar = document.getElementById('groupQuoteBar');
+  if (bar) bar.style.display = 'none';
+}
+async function sendGroupText(g,text){const mid='gm'+Date.now();const msgObj={id:mid,groupId:g.id,from:'user',senderNickname:'我',text,time:Date.now(),readStatus:'read',groupReaders:g.members.map(m=>({roleId:m.roleId,nickname:m.nickname,read:false}))};if(groupQuotedMessage)msgObj.quote=groupQuotedMessage;state.groupMessages.push(msgObj);g.lastMessage=text;g.lastTime=Date.now();await saveAll();clearGroupQuote();groupRenderMessages(g,1);const gi=document.getElementById('groupInput');if(gi){gi.value='';gi.style.height='auto';}if(typeof updateGroupSendBtn==='function')updateGroupSendBtn();groupMembersReply(g,mid);}
 async function sendGroupSticker(sticker){const g=state.groupChats.find(x=>x.id===activeGroupId);if(!g)return;const mid='gm'+Date.now();state.groupMessages.push({id:mid,groupId:g.id,from:'user',senderNickname:'我',sticker,time:Date.now(),readStatus:'read',groupReaders:g.members.map(m=>({roleId:m.roleId,nickname:m.nickname,read:false}))});g.lastMessage='[表情包]';g.lastTime=Date.now();await saveAll();groupRenderMessages(g,1);groupMembersReply(g,mid);}
 function groupMembersReply(g,triggerMsgId){const min=Math.max(0,+g.settings.minDelay??state.settings.groupMinDelay??2),max=Math.max(min,+g.settings.maxDelay??state.settings.groupMaxDelay??6);g.members.forEach(member=>{const ov=g.settings.memberOverrides?.[member.roleId]||{};const noReply=ov.noReplyChance??g.settings.noReplyChance??state.settings.groupNoReplyChance??15;const delay=randInt(ov.minDelay??min,ov.maxDelay??max)*1000;setTimeout(async()=>{if(Math.random()*100<noReply){state.groupMessages.push({id:'gm'+Date.now()+Math.random(),groupId:g.id,from:member.roleId,senderNickname:member.nickname,text:'',time:Date.now(),readStatus:'no_reply'});}else{const maxConcat=ov.maxConcat??g.settings.maxConcat??state.settings.groupMaxConcat??3;state.groupMessages.push({id:'gm'+Date.now()+Math.random(),groupId:g.id,from:member.roleId,senderNickname:member.nickname,text:groupReplyText(maxConcat),sticker:(Math.random()*100<(ov.stickerChance??state.settings.stickerChance)?(state.stickers.length?state.stickers[randInt(0,state.stickers.length-1)]:''):'')||null,time:Date.now(),readStatus:'read'});}if(triggerMsgId){const trigger=state.groupMessages.find(x=>x.id===triggerMsgId);const reader=trigger?.groupReaders?.find(r=>r.roleId===member.roleId);if(reader)reader.read=true;}g.lastTime=Date.now();g.lastMessage=state.groupMessages.filter(x=>x.groupId===g.id).at(-1)?.text||'已读';await saveAll();if(activeGroupId===g.id)groupRenderMessages(g,1);},delay);});}
 function groupMembersSpeak(g){const member=g.members[randInt(0,g.members.length-1)];const delay=randInt(g.settings.minDelay??state.settings.groupMinDelay??2,g.settings.maxDelay??state.settings.groupMaxDelay??6)*1000;setTimeout(async()=>{state.groupMessages.push({id:'gm'+Date.now(),groupId:g.id,from:member.roleId,senderNickname:member.nickname,text:groupReplyText(member.maxConcat||g.settings.maxConcat||3),sticker:null,time:Date.now(),readStatus:'read'});g.lastTime=Date.now();g.lastMessage=state.groupMessages.at(-1).text;await saveAll();if(activeGroupId===g.id)groupRenderMessages(g,1);},delay);}
 function openGroupBatchSheet(g){openSheet(`<h2>批量发送</h2><p style="font-size:12px;color:var(--muted)">每行一条，依次发出。</p><textarea id="groupBatchInput" rows="6" class="sheet-input" placeholder="第一条消息…\n第二条消息…"></textarea><div class="sheet-btn-row"><button onclick="closeSheet()">取消</button><button class="primary" id="groupBatchSend">发送</button></div>`,()=>document.getElementById('groupBatchSend').onclick=async()=>{const lines=document.getElementById('groupBatchInput').value.split('\n').map(x=>x.trim()).filter(Boolean);closeSheet();for(const line of lines){await sendGroupText(g,line);await sleep(rand(500,1000));}});}
 function openGroupCreateModal(){const members=state.characters; if(members.length<2){toast('至少需要两个角色才能创建群聊','fa-triangle-exclamation');return;}openSheet(`<h2>创建群聊</h2><input id="newGroupName" class="sheet-input" placeholder="群聊名称" style="margin-bottom:10px"><div class="group-create-list">${members.map(c=>`<div class="group-member-row"><input type="checkbox" data-gmember="${c.id}"><img src="${c.partner.avatar||AVATAR_PLACEHOLDER}"><label>${escapeHTML(c.partner.name)}<input class="group-nick sheet-input" data-gnick="${c.id}" value="${escapeHTML(c.partner.name)}" placeholder="群昵称"></label></div>`).join('')}</div><div class="sheet-btn-row"><button onclick="closeSheet()">取消</button><button class="primary" id="createGroupSave">创建</button></div>`,()=>document.getElementById('createGroupSave').onclick=async()=>{const ids=[...document.querySelectorAll('[data-gmember]:checked')].map(x=>x.dataset.gmember);if(ids.length<2){toast('至少选择 2 个角色','fa-triangle-exclamation');return;}const g={id:'g_'+Date.now(),name:document.getElementById('newGroupName').value.trim()||'新群聊',members:ids.map(id=>({roleId:id,nickname:document.querySelector(`[data-gnick="${id}"]`)?.value.trim()||state.characters.find(c=>c.id===id)?.partner.name||'成员',avatar:state.characters.find(c=>c.id===id)?.partner.avatar||''})),lastMessage:'',lastTime:Date.now(),unreadCount:0,settings:{maxConcat:state.settings.groupMaxConcat??3,noReplyChance:state.settings.groupNoReplyChance??15,minDelay:state.settings.groupMinDelay??2,maxDelay:state.settings.groupMaxDelay??6,memberOverrides:{}},createdAt:Date.now()};state.groupChats.push(g);await saveAll();closeSheet();renderGroups();toast('群聊已创建');});}
 function openGroupSettingsModal(g){
-  const rows=g.members.map(m=>{const c=state.characters.find(x=>x.id===m.roleId);const ov=g.settings.memberOverrides?.[m.roleId]||{};return `<div class="group-member-setting-card"><div class="group-member-setting-head"><img src="${m.avatar||c?.partner.avatar||AVATAR_PLACEHOLDER}"><div><b>${escapeHTML(m.nickname)}</b><small>${escapeHTML(c?.partner.name||'角色')}</small></div></div><div class="group-member-setting-grid"><label>不回概率<input class="sheet-input" data-ovno="${m.roleId}" type="number" min="0" max="100" value="${ov.noReplyChance??''}" placeholder="继承全局"></label><label>拼接数<input class="sheet-input" data-ovmax="${m.roleId}" type="number" min="1" max="10" value="${ov.maxConcat??''}" placeholder="继承全局"></label><label>最短等待<input class="sheet-input" data-ovmin="${m.roleId}" type="number" min="0" max="120" value="${ov.minDelay??''}" placeholder="继承全局"></label><label>最长等待<input class="sheet-input" data-ovmaxd="${m.roleId}" type="number" min="0" max="120" value="${ov.maxDelay??''}" placeholder="继承全局"></label></div></div>`}).join('');
-  openSheet(`<h2>${escapeHTML(g.name)} · 群聊设置</h2><div class="group-settings-grid"><label>最大拼接数<input id="gSetMax" class="sheet-input" type="number" min="1" max="10" value="${g.settings.maxConcat}"></label><label>全局不回概率<input id="gSetNo" class="sheet-input" type="number" min="0" max="100" value="${g.settings.noReplyChance}"></label><label>全局最短等待<input id="gSetMin" class="sheet-input" type="number" min="0" max="120" value="${g.settings.minDelay}"></label><label>全局最长等待<input id="gSetMaxD" class="sheet-input" type="number" min="0" max="120" value="${g.settings.maxDelay}"></label></div><div class="group-settings-note">下面可以单独覆盖某个成员；留空就继承上面的全局设置。</div><div class="group-member-setting-list">${rows}</div><div class="sheet-btn-row"><button onclick="closeSheet()">取消</button><button class="primary" id="groupSetSave">保存设置</button></div>`,()=>document.getElementById('groupSetSave').onclick=async()=>{g.settings.maxConcat=Math.max(1,+document.getElementById('gSetMax').value||3);g.settings.noReplyChance=Math.max(0,Math.min(100,+document.getElementById('gSetNo').value||0));g.settings.minDelay=Math.max(0,+document.getElementById('gSetMin').value||0);g.settings.maxDelay=Math.max(g.settings.minDelay,+document.getElementById('gSetMaxD').value||g.settings.minDelay);g.members.forEach(m=>{const ov={};const no=document.querySelector(`[data-ovno="${m.roleId}"]`)?.value;const mx=document.querySelector(`[data-ovmax="${m.roleId}"]`)?.value;const mi=document.querySelector(`[data-ovmin="${m.roleId}"]`)?.value;const md=document.querySelector(`[data-ovmaxd="${m.roleId}"]`)?.value;if(no!=='')ov.noReplyChance=Math.max(0,Math.min(100,+no));if(mx!=='')ov.maxConcat=Math.max(1,+mx);if(mi!=='')ov.minDelay=Math.max(0,+mi);if(md!=='')ov.maxDelay=Math.max(ov.minDelay??g.settings.minDelay,+md);g.settings.memberOverrides[m.roleId]=ov;});await saveAll();closeSheet();renderGroupChat(g);});
+  const rows=g.members.map(m=>{const c=state.characters.find(x=>x.id===m.roleId);const ov=g.settings.memberOverrides?.[m.roleId]||{};return `<div class="group-member-setting-card"><div class="group-member-setting-head"><img src="${m.avatar||c?.partner.avatar||AVATAR_PLACEHOLDER}"><div><b>${escapeHTML(m.nickname)}</b><small>${escapeHTML(c?.partner.name||'角色')}</small></div><button type="button" class="ci-icon-btn danger" data-kick="${m.roleId}" title="踢出群聊" style="margin-left:auto;"><i class="fa-solid fa-user-minus"></i></button></div><div class="group-member-setting-grid"><label>不回概率<input class="sheet-input" data-ovno="${m.roleId}" type="number" min="0" max="100" value="${ov.noReplyChance??''}" placeholder="继承全局"></label><label>拼接数<input class="sheet-input" data-ovmax="${m.roleId}" type="number" min="1" max="10" value="${ov.maxConcat??''}" placeholder="继承全局"></label><label>最短等待<input class="sheet-input" data-ovmin="${m.roleId}" type="number" min="0" max="120" value="${ov.minDelay??''}" placeholder="继承全局"></label><label>最长等待<input class="sheet-input" data-ovmaxd="${m.roleId}" type="number" min="0" max="120" value="${ov.maxDelay??''}" placeholder="继承全局"></label></div></div>`}).join('');
+  const availableToAdd = state.characters.filter(c=>!g.members.some(m=>m.roleId===c.id));
+  openSheet(`<h2>群聊设置</h2><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;"><img id="gSetAvatarPreview" src="${g.avatar||groupMemberData(g)[0]?.c?.partner.avatar||AVATAR_PLACEHOLDER}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;cursor:pointer;" title="点击更换群头像"><input id="gSetName" class="sheet-input" style="flex:1;" value="${escapeHTML(g.name)}" placeholder="群聊名称"></div><div class="group-settings-grid"><label>最大拼接数<input id="gSetMax" class="sheet-input" type="number" min="1" max="10" value="${g.settings.maxConcat}"></label><label>全局不回概率<input id="gSetNo" class="sheet-input" type="number" min="0" max="100" value="${g.settings.noReplyChance}"></label><label>全局最短等待<input id="gSetMin" class="sheet-input" type="number" min="0" max="120" value="${g.settings.minDelay}"></label><label>全局最长等待<input id="gSetMaxD" class="sheet-input" type="number" min="0" max="120" value="${g.settings.maxDelay}"></label></div><div class="group-settings-note">下面可以单独覆盖某个成员；留空就继承上面的全局设置。</div><div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px;"><b style="font-size:13px;">群成员（${g.members.length}）</b>${availableToAdd.length?`<button type="button" class="mini primary" id="groupAddMemberBtn"><i class="fa-solid fa-user-plus"></i> 拉人</button>`:''}</div><div class="group-member-setting-list">${rows}</div><div class="sheet-btn-row"><button onclick="closeSheet()">取消</button><button class="danger" id="groupDeleteBtn">解散群聊</button><button class="primary" id="groupSetSave">保存设置</button></div>`,()=>{
+    document.getElementById('gSetAvatarPreview').onclick=()=>pickImage(url=>{g.avatar=url;document.getElementById('gSetAvatarPreview').src=url;});
+    document.getElementById('groupDeleteBtn').onclick=()=>confirmModal('解散该群聊？聊天记录也会一并删除，此操作不可撤销。',async()=>{state.groupChats=state.groupChats.filter(x=>x.id!==g.id);state.groupMessages=state.groupMessages.filter(m=>m.groupId!==g.id);activeGroupId=null;await saveAll();closeSheet();renderGroups();});
+    const addBtn=document.getElementById('groupAddMemberBtn');
+    if(addBtn)addBtn.onclick=()=>openGroupAddMemberSheet(g);
+    document.querySelectorAll('[data-kick]').forEach(btn=>btn.addEventListener('click',()=>{
+      if(g.members.length<=2){toast('群聊至少需要 2 名成员','fa-triangle-exclamation');return;}
+      const roleId=btn.dataset.kick;const c=state.characters.find(x=>x.id===roleId);
+      confirmModal(`把「${escapeHTML(c?.partner.name||'该成员')}」踢出群聊？`,async()=>{
+        g.members=g.members.filter(m=>m.roleId!==roleId);
+        if(g.settings.memberOverrides)delete g.settings.memberOverrides[roleId];
+        await saveAll();closeSheet();openGroupSettingsModal(g);
+      });
+    }));
+    document.getElementById('groupSetSave').onclick=async()=>{g.name=document.getElementById('gSetName').value.trim()||g.name;g.settings.maxConcat=Math.max(1,+document.getElementById('gSetMax').value||3);g.settings.noReplyChance=Math.max(0,Math.min(100,+document.getElementById('gSetNo').value||0));g.settings.minDelay=Math.max(0,+document.getElementById('gSetMin').value||0);g.settings.maxDelay=Math.max(g.settings.minDelay,+document.getElementById('gSetMaxD').value||g.settings.minDelay);g.members.forEach(m=>{const ov={};const no=document.querySelector(`[data-ovno="${m.roleId}"]`)?.value;const mx=document.querySelector(`[data-ovmax="${m.roleId}"]`)?.value;const mi=document.querySelector(`[data-ovmin="${m.roleId}"]`)?.value;const md=document.querySelector(`[data-ovmaxd="${m.roleId}"]`)?.value;if(no!=='')ov.noReplyChance=Math.max(0,Math.min(100,+no));if(mx!=='')ov.maxConcat=Math.max(1,+mx);if(mi!=='')ov.minDelay=Math.max(0,+mi);if(md!=='')ov.maxDelay=Math.max(ov.minDelay??g.settings.minDelay,+md);g.settings.memberOverrides[m.roleId]=ov;});await saveAll();closeSheet();renderGroupChat(g);};
+  });
+}
+function openGroupAddMemberSheet(g){
+  const availableToAdd = state.characters.filter(c=>!g.members.some(m=>m.roleId===c.id));
+  if(!availableToAdd.length){toast('已经没有可以拉进来的角色了','fa-triangle-exclamation');return;}
+  openSheet(`<h2>拉人</h2><div class="group-create-list">${availableToAdd.map(c=>`<div class="group-member-row"><input type="checkbox" data-gaddmember="${c.id}"><img src="${c.partner.avatar||AVATAR_PLACEHOLDER}"><label>${escapeHTML(c.partner.name)}<input class="group-nick sheet-input" data-gaddnick="${c.id}" value="${escapeHTML(c.partner.name)}" placeholder="群昵称"></label></div>`).join('')}</div><div class="sheet-btn-row"><button onclick="closeSheet()">取消</button><button class="primary" id="groupAddMemberSave">拉进群聊</button></div>`,()=>{
+    document.getElementById('groupAddMemberSave').onclick=async()=>{
+      const ids=[...document.querySelectorAll('[data-gaddmember]:checked')].map(x=>x.dataset.gaddmember);
+      if(!ids.length){toast('至少选一个角色','fa-triangle-exclamation');return;}
+      ids.forEach(id=>{
+        const c=state.characters.find(x=>x.id===id);
+        g.members.push({roleId:id,nickname:document.querySelector(`[data-gaddnick="${id}"]`)?.value.trim()||c?.partner.name||'成员',avatar:c?.partner.avatar||''});
+      });
+      await saveAll();closeSheet();
+      state.groupMessages.push({id:'gm'+Date.now(),groupId:g.id,sysline:`${ids.map(id=>state.characters.find(c=>c.id===id)?.partner.name||'新成员').join('、')} 加入了群聊`,time:Date.now()});
+      await saveAll();
+      openGroupSettingsModal(g);
+    };
+  });
 }
 async function groupMoney(g,type){toast(type==='envelope'?'群红包入口':'群转账入口','fa-gift');}
 async function sendGroupPoke(g){const mid='gm'+Date.now();state.groupMessages.push({id:mid,groupId:g.id,from:'user',senderNickname:'我',text:'拍了拍大家',time:Date.now(),readStatus:'read',groupReaders:g.members.map(m=>({roleId:m.roleId,nickname:m.nickname,read:false}))});await saveAll();groupRenderMessages(g,1);groupMembersReply(g,mid);}
