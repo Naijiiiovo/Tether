@@ -6539,10 +6539,133 @@ function applyThemeV2_unused(){
     }
   } catch(e){ console.warn('applyTheme v2 error', e); }
 }
+/* ==== 背景图补丁 v4：挂到不滚动的父容器上，修滚动露底 ==== */
+window.applyChatBackground = function(){
+  try {
+    const settings = (typeof state !== 'undefined' && state.settings) || {};
+    const raw = settings.chatBg || '';
+    const bg = raw && typeof _toBlobUrl === 'function' ? (_toBlobUrl(raw) || raw) : raw;
+    const n = Number(settings.chatBgOpacity);
+    const op = Number.isFinite(n) ? Math.max(0.05, Math.min(1, n)) : 1;
+    const overlayOp = 1 - op;
+    const cssBg = bg ? 'url("' + String(bg).replace(/"/g, '\\"') + '")' : 'none';
+
+    document.documentElement.style.setProperty('--chat-bg-url', cssBg);
+    document.documentElement.style.setProperty('--chat-bg-opacity', String(op));
+    document.documentElement.style.setProperty('--chat-bg-overlay-opacity', String(overlayOp));
+
+    // 私聊：背景挂在 #view-chat，消息区透明
+    const viewChat = document.getElementById('view-chat');
+    if (viewChat){
+      if (bg){
+        viewChat.style.backgroundImage = cssBg;
+        viewChat.style.backgroundSize = 'cover';
+        viewChat.style.backgroundPosition = 'center';
+        viewChat.style.backgroundRepeat = 'no-repeat';
+        viewChat.style.backgroundColor = 'var(--shell-bg)';
+      } else {
+        viewChat.style.backgroundImage = '';
+        viewChat.style.backgroundColor = '';
+      }
+    }
+    document.querySelectorAll('.chat-messages').forEach(el=>{
+      el.style.backgroundImage = 'none';
+      el.style.backgroundColor = 'transparent';
+      el.style.setProperty('--chat-bg-overlay-opacity', String(overlayOp));
+    });
+
+    // 群聊：背景挂在 .group-chat-view，消息区透明
+    const groupView = document.querySelector('#view-groups .group-chat-view');
+    if (groupView){
+      if (bg){
+        groupView.style.backgroundImage = cssBg;
+        groupView.style.backgroundSize = 'cover';
+        groupView.style.backgroundPosition = 'center';
+        groupView.style.backgroundRepeat = 'no-repeat';
+        groupView.style.backgroundColor = 'var(--shell-bg)';
+      } else {
+        groupView.style.backgroundImage = '';
+        groupView.style.backgroundColor = '';
+      }
+    }
+    document.querySelectorAll('.group-messages').forEach(el=>{
+      el.style.backgroundImage = 'none';
+      el.style.backgroundColor = 'transparent';
+      el.style.setProperty('--chat-bg-overlay-opacity', String(overlayOp));
+    });
+  } catch(e){ console.warn('applyChatBackground v4 error', e); }
+};
 /* 页面加载后主动跑一遍 */
 setTimeout(function(){ try{ applyTheme(); applyChatBackground(); }catch(e){} }, 300);
 setTimeout(function(){ try{ applyTheme(); applyChatBackground(); }catch(e){} }, 800);
 setTimeout(function(){ try{ applyTheme(); applyChatBackground(); }catch(e){} }, 2500);
+/* ==== 背景图补丁 v5：磨砂遮罩合并进 background 层，彻底修滚动露底 ==== */
+(function(){
+  // 1. 干掉原来那个伪元素遮罩（滚动露底的元凶）
+  const killStyle = document.createElement('style');
+  killStyle.textContent = '.chat-messages::before, .group-messages::before { background: transparent !important; opacity: 0 !important; }';
+  document.head.appendChild(killStyle);
+
+  // 2. 重写 applyChatBackground：磨砂用 linear-gradient 和图片叠在同一层
+  window.applyChatBackground = function(){
+    try {
+      const settings = (typeof state !== 'undefined' && state.settings) || {};
+      const raw = settings.chatBg || '';
+      const bg = raw && typeof _toBlobUrl === 'function' ? (_toBlobUrl(raw) || raw) : raw;
+      const n = Number(settings.chatBgOpacity);
+      const op = Number.isFinite(n) ? Math.max(0.05, Math.min(1, n)) : 1;
+      const overlayOp = 1 - op;
+      const cssBg = bg ? 'url("' + String(bg).replace(/"/g, '\\"') + '")' : 'none';
+      const overlayColor = 'rgba(245,246,248,' + overlayOp + ')';
+
+      document.documentElement.style.setProperty('--chat-bg-url', cssBg);
+      document.documentElement.style.setProperty('--chat-bg-opacity', String(op));
+      document.documentElement.style.setProperty('--chat-bg-overlay-opacity', '0');
+
+      // 私聊
+      const viewChat = document.getElementById('view-chat');
+      if (viewChat){
+        if (bg){
+          viewChat.style.backgroundImage = 'linear-gradient(' + overlayColor + ',' + overlayColor + '), ' + cssBg;
+          viewChat.style.backgroundSize = 'cover, cover';
+          viewChat.style.backgroundPosition = 'center, center';
+          viewChat.style.backgroundRepeat = 'no-repeat, no-repeat';
+          viewChat.style.backgroundColor = '#f5f6f8';
+        } else {
+          viewChat.style.backgroundImage = '';
+          viewChat.style.backgroundColor = '';
+        }
+      }
+      document.querySelectorAll('.chat-messages').forEach(el=>{
+        el.style.backgroundImage = 'none';
+        el.style.backgroundColor = 'transparent';
+      });
+
+      // 群聊
+      const groupView = document.querySelector('#view-groups .group-chat-view');
+      if (groupView){
+        if (bg){
+          groupView.style.backgroundImage = 'linear-gradient(' + overlayColor + ',' + overlayColor + '), ' + cssBg;
+          groupView.style.backgroundSize = 'cover, cover';
+          groupView.style.backgroundPosition = 'center, center';
+          groupView.style.backgroundRepeat = 'no-repeat, no-repeat';
+          groupView.style.backgroundColor = '#f5f6f8';
+        } else {
+          groupView.style.backgroundImage = '';
+          groupView.style.backgroundColor = '';
+        }
+      }
+      document.querySelectorAll('.group-messages').forEach(el=>{
+        el.style.backgroundImage = 'none';
+        el.style.backgroundColor = 'transparent';
+      });
+    } catch(e){ console.warn('applyChatBackground v5 error', e); }
+  };
+
+  // 3. 立即跑一遍
+  try { applyChatBackground(); } catch(e){}
+  setTimeout(function(){ try { applyChatBackground(); } catch(e){} }, 500);
+})();
 </script>
 
 </body>
