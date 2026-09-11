@@ -6091,5 +6091,53 @@ window.openMusicNeteaseSheet = function(){
 async function fetchNeteaseLyrics(id){ return ''; }
 async function fetchNeteaseMeta(id){ return {}; }
 </script>
+<script>
+(function(){
+  const btn = document.createElement('button');
+  btn.textContent = '诊断数据';
+  btn.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:99999;background:#ff4d5e;color:#fff;border:none;border-radius:20px;padding:10px 16px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);';
+  btn.onclick = async ()=>{
+    const keys = ['app_cards','app_stickers','app_kaomoji','app_pokes','app_image_library','app_characters','app_user_presets','app_group_chats','app_group_messages','app_playlist','app_music'];
+    const lines = [];
+    for (const k of keys){
+      try {
+        const v = await localforage.getItem(k);
+        if (Array.isArray(v)) lines.push(k + ' → 数组, 长度 ' + v.length);
+        else if (v && typeof v === 'object') lines.push(k + ' → 对象, keys: ' + Object.keys(v).join(','));
+        else lines.push(k + ' → ' + String(v));
+      } catch(e){ lines.push(k + ' → 读失败: ' + e.message); }
+    }
+    lines.push('');
+    lines.push('== app_characters 明细 ==');
+    try {
+      const chars = await localforage.getItem('app_characters');
+      if (Array.isArray(chars)){
+        if (chars.length===0) lines.push('(空数组)');
+        chars.forEach((c,i)=>{
+          lines.push('[' + i + '] id=' + c.id + ' 标签=' + (c.label||'') + ' 消息=' + ((c.messages||[]).length) + ' 动态=' + ((c.posts||[]).length) + ' 信件=' + ((c.letters||[]).length));
+        });
+      } else lines.push('不是数组: ' + typeof chars);
+    } catch(e){ lines.push('读失败: ' + e.message); }
+    lines.push('');
+    lines.push('== IndexedDB 里所有数据库 ==');
+    try {
+      if (indexedDB.databases){
+        const dbs = await indexedDB.databases();
+        dbs.forEach(d=> lines.push('· ' + d.name + ' (v' + d.version + ')'));
+      } else {
+        lines.push('(此浏览器不支持 indexedDB.databases)');
+      }
+    } catch(e){ lines.push('列数据库失败: ' + e.message); }
+    const w = window.open('', '_blank');
+    if (w){
+      w.document.write('<pre style="font-size:14px;padding:16px;white-space:pre-wrap;word-break:break-all;">' + lines.join('\n').replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre>');
+      w.document.title = '诊断数据';
+    } else {
+      alert(lines.join('\n'));
+    }
+  };
+  document.body.appendChild(btn);
+})();
+</script>
 </body>
 </html>
