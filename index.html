@@ -1893,7 +1893,24 @@ function loadCharacterInto(character){
   state.messages = character.messages || [];
   state.posts = character.posts || [];
   state.letters = character.letters || [];
-  if (!state.partner.currentStatus) state.partner.currentStatus = state.partnerStatusList[randInt(0,state.partnerStatusList.length-1)];
+  // 状态池拆分初始化：从旧的固定组合中提取 emoji 和文案
+if (!Array.isArray(state.statusEmojis) || !state.statusEmojis.length) {
+  const emojiSet = new Set();
+  (state.partnerStatusList || []).forEach(x => { if (x && x.emoji) emojiSet.add(x.emoji); });
+  state.statusEmojis = emojiSet.size ? [...emojiSet] : DEFAULT_STATUS_EMOJIS.slice();
+}
+if (!Array.isArray(state.statusTexts) || !state.statusTexts.length) {
+  const textSet = new Set();
+  (state.partnerStatusList || []).forEach(x => { if (x && x.text) textSet.add(x.text); });
+  state.statusTexts = textSet.size ? [...textSet] : UPLOADED_STATUSES.slice();
+}
+// 用随机组合代替固定搭配
+if (!state.partner.currentStatus) {
+  state.partner.currentStatus = {
+    emoji: state.statusEmojis[randInt(0, state.statusEmojis.length-1)] || '',
+    text: state.statusTexts[randInt(0, state.statusTexts.length-1)] || ''
+  };
+}
 }
 
 /* ============================================================================
@@ -3380,7 +3397,7 @@ function setupStatusTimer(){
   if (statusTimer) clearInterval(statusTimer);
   statusTimer = setInterval(async ()=>{
     if (state.partnerStatusList.length===0) return;
-    state.partner.currentStatus = state.partnerStatusList[randInt(0,state.partnerStatusList.length-1)];
+    state.partner.currentStatus = { emoji: (state.statusEmojis||[])[randInt(0,(state.statusEmojis||[]).length-1)] || '', text: (state.statusTexts||[])[randInt(0,(state.statusTexts||[]).length-1)] || '' };
     await saveAll();
     renderStatusTag();
   }, Math.max(5,state.settings.statusChangeInterval)*60*1000);
@@ -4040,9 +4057,21 @@ function renderSettings(){
       </details>
 
       <details class="library-fold">
-        <summary><span id="statusCountText">双方状态（${state.partnerStatusList.length} 条对方 / ${(state.me.customStatusList||[]).length || 0} 条我的自定义）</span><i class="fa-solid fa-chevron-down"></i></summary>
-        <div class="library-fold-body">
-          <div class="status-columns">
+  <summary><span id="statusCountText">状态池（Emoji ${state.statusEmojis?.length||0} 个 / 文案 ${state.statusTexts?.length||0} 条）</span><i class="fa-solid fa-chevron-down"></i></summary>
+<div class="library-fold-body">
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:140px;">
+      <div class="label" style="margin-bottom:4px;">批量导入 Emoji 池</div>
+      <textarea id="statusEmojiPoolInput" class="sheet-input" rows="3" placeholder="一行一个，例如：&#10;😭&#10;😂&#10;🥺"></textarea>
+      <button class="mini primary" id="statusEmojiPoolAdd" style="width:100%;justify-content:center;margin-top:4px;">导入 Emoji</button>
+    </div>
+    <div style="flex:1;min-width:140px;">
+      <div class="label" style="margin-bottom:4px;">批量导入文案池</div>
+      <textarea id="statusTextPoolInput" class="sheet-input" rows="3" placeholder="一行一个，例如：&#10;想你&#10;工作&#10;摸鱼"></textarea>
+      <button class="mini primary" id="statusTextPoolAdd" style="width:100%;justify-content:center;margin-top:4px;">导入文案</button>
+    </div>
+  </div>
+  <div class="status-columns">
             <div><div class="label">对方状态</div><div style="display:flex;gap:6px;margin-bottom:6px;"><button class="mini" id="partnerStatusSelectAllBtn" type="button">全选</button><button class="mini danger" id="partnerStatusDeleteSelBtn" type="button">删除选中</button></div><div class="status-library" id="partnerStatusListBox"></div></div>
             <div><div class="label">我的状态</div><div style="display:flex;gap:6px;margin-bottom:6px;"><button class="mini" id="myStatusSelectAllBtn" type="button">全选</button><button class="mini danger" id="myStatusDeleteSelBtn" type="button">删除选中</button></div><div class="status-library" id="myStatusListBox"></div></div>
           </div>
@@ -4755,6 +4784,28 @@ if (chatBgOp){
   bindGroupNumber('setGroupMaxConcat','groupMaxConcat'); bindGroupNumber('setGroupNoReplyChance','groupNoReplyChance'); bindGroupNumber('setGroupMinDelay','groupMinDelay'); bindGroupNumber('setGroupMaxDelay','groupMaxDelay');
   const removeDeadBtn=document.getElementById('removeDeadStickersBtn'); if(removeDeadBtn) removeDeadBtn.addEventListener('click',removeDeadStickerLinks);
   const bulkK=document.getElementById('bulkKaomojiBtn'); if(bulkK) bulkK.addEventListener('click',async()=>{const v=document.getElementById('bulkKaomoji').value.split('\n').map(x=>x.trim()).filter(Boolean);if(!v.length)return;state.kaomoji.push(...v);document.getElementById('bulkKaomoji').value='';await saveAll();renderSettings();toast(`已导入 ${v.length} 条颜文字`);});
+  // 状态池批量导入
+const bindStatusPoolAdd = (btnId, inputId, poolKey) => {
+  const btn = document.getElementById(btnId);
+  const input = document.getElementById(inputId);
+  if (!btn || !input) return;
+  btn.addEventListener('click', async () => {
+    const val = input.value.split('\n').map(x=>x.trim()).filter(Boolean);
+    if (!val.length) return;
+    if (!Array.isArray(state[poolKey])) state[poolKey] = [];
+    const existing = new Set(state[poolKey]);
+    val.forEach(v => { if (!existing.has(v)) { state[poolKey].push(v); existing.add(v); } });
+    input.value = '';
+    await saveAll();
+    renderStatusLibrary(); // 刷新显示数量
+    // 更新文字计数
+    const ct = document.getElementById('statusCountText');
+    if (ct) ct.textContent = `状态池（Emoji ${state.statusEmojis?.length||0} 个 / 文案 ${state.statusTexts?.length||0} 条）`;
+    toast(poolKey === 'statusEmojis' ? `已新增 ${val.length} 个 Emoji` : `已新增 ${val.length} 条文案`, 'fa-check');
+  });
+};
+bindStatusPoolAdd('statusEmojiPoolAdd', 'statusEmojiPoolInput', 'statusEmojis');
+bindStatusPoolAdd('statusTextPoolAdd', 'statusTextPoolInput', 'statusTexts');
   const bulkPS=document.getElementById('bulkPartnerStatusBtn'); if(bulkPS) bulkPS.addEventListener('click',async()=>{const v=document.getElementById('bulkPartnerStatuses').value.split('\n').map(x=>x.trim()).filter(Boolean);const existing=new Set(state.partnerStatusList.map(x=>x.text));v.forEach((t)=>{if(!existing.has(t)){state.partnerStatusList.push({emoji:DEFAULT_STATUS_EMOJIS[randInt(0,DEFAULT_STATUS_EMOJIS.length-1)],text:t});existing.add(t);}});await saveAll();document.getElementById('bulkPartnerStatuses').value='';renderStatusLibrary();const ct=document.getElementById('statusCountText');if(ct)ct.textContent=`双方状态（${state.partnerStatusList.length} 条对方 / ${(state.me.customStatusList||[]).length || 0} 条我的自定义）`;});
   const bulkMS=document.getElementById('bulkMyStatusBtn'); if(bulkMS) bulkMS.addEventListener('click',async()=>{const mine=ensureMyStatusList();const v=document.getElementById('bulkMyStatuses').value.split('\n').map(x=>x.trim()).filter(Boolean);const existing=new Set(mine.map(x=>x.text));v.forEach((t)=>{if(!existing.has(t))mine.push({emoji:DEFAULT_STATUS_EMOJIS[randInt(0,DEFAULT_STATUS_EMOJIS.length-1)],text:t});});await saveAll();document.getElementById('bulkMyStatuses').value='';renderStatusLibrary();const ct=document.getElementById('statusCountText');if(ct)ct.textContent=`双方状态（${state.partnerStatusList.length} 条对方 / ${(state.me.customStatusList||[]).length || 0} 条我的自定义）`;});
   const groupSetBtn=document.getElementById('openGroupSettingsBtn'); if(groupSetBtn) groupSetBtn.addEventListener('click',()=>{if(!state.groupChats.length){toast('还没有群聊','fa-user-group');return;}openGroupSettingsModal(state.groupChats[0]);});
@@ -5241,7 +5292,7 @@ function renderStatusLibrary(){
   if(partnerBox) partnerBox.innerHTML=state.partnerStatusList.map((x,i)=>`<div class="status-item"><input type="checkbox" data-status-cb="partner" data-i="${i}" style="margin-right:4px;"><span>${escapeHTML(x.emoji||'')} ${escapeHTML(x.text)}</span><button type="button" data-status-kind="partner" data-i="${i}"><i class="fa-solid fa-xmark"></i></button></div>`).join('');
   const mine=ensureMyStatusList();
   if(myBox) myBox.innerHTML=mine.map((x,i)=>`<div class="status-item"><input type="checkbox" data-status-cb="mine" data-i="${i}" style="margin-right:4px;"><span>${escapeHTML(x.emoji||'')} ${escapeHTML(x.text)}</span><button type="button" data-status-kind="mine" data-i="${i}"><i class="fa-solid fa-xmark"></i></button></div>`).join('');
-  const updateCountText = ()=>{ const el=document.getElementById('statusCountText'); if(el) el.textContent=`双方状态（${state.partnerStatusList.length} 条对方 / ${(state.me.customStatusList||[]).length || 0} 条我的自定义）`; };
+  const updateCountText = ()=>{ const el=document.getElementById('statusCountText'); if(el) el.textContent=`状态池（Emoji ${state.statusEmojis?.length||0} 个 / 文案 ${state.statusTexts?.length||0} 条）`; };
   document.querySelectorAll('[data-status-kind]').forEach(btn=>btn.addEventListener('click',async()=>{
     const arr=btn.dataset.statusKind==='partner'?state.partnerStatusList:mine;
     arr.splice(+btn.dataset.i,1); await saveAll(); renderStatusLibrary(); updateCountText();
@@ -5268,20 +5319,29 @@ function renderKaomojiList(){
   box.querySelectorAll('[data-kao-i]').forEach(b=>b.addEventListener('click',async()=>{state.kaomoji.splice(+b.dataset.kaoI,1);await saveAll();renderSettings();}));
 }
 async function removeDeadStickerLinks(){
-  const links=state.stickers.filter(x=>typeof x==='string' && /^https?:\/\//i.test(x));
-  if(!links.length){toast('没有可检测的链接表情包','fa-link-slash');return;}
-  showLoading('正在检查链接表情包…');
-  const dead=new Set();
-  await Promise.all(links.map(u=>new Promise(resolve=>{
-    const img=new Image(); let done=false;
-    const finish=(bad)=>{if(done)return;done=true;if(bad)dead.add(u);resolve();};
-    img.onload=()=>finish(false); img.onerror=()=>finish(true); img.src=u;
-    setTimeout(()=>finish(true),6000);
+  const all = state.stickers.filter(x=>typeof x==='string' && x.length);
+  if(!all.length){toast('没有可检测的表情包','fa-link-slash');return;}
+  showLoading(`正在检查 ${all.length} 个表情包…`);
+  const dead = new Set();
+  await Promise.all(all.map(u => new Promise(resolve=>{
+    let done = false;
+    const finish = (bad)=>{ if(done) return; done=true; if(bad) dead.add(u); resolve(); };
+    try {
+      const img = new Image();
+      img.onload = ()=>finish(img.naturalWidth === 0 || img.naturalHeight === 0);
+      img.onerror = ()=>finish(true);
+      img.src = u;
+      setTimeout(()=>finish(true), 8000);
+    } catch(e){ finish(true); }
   })));
   hideLoading();
-  state.stickers=state.stickers.filter(x=>!dead.has(x));
-  stickerSelections.clear(); await saveAll(); renderSettings();
-  toast(dead.size?`已移除 ${dead.size} 个失效链接`:'没有发现失效链接','fa-link-slash');
+  const before = state.stickers.length;
+  state.stickers = state.stickers.filter(x => !dead.has(x));
+  const removed = before - state.stickers.length;
+  stickerSelections.clear();
+  await saveAll();
+  renderSettings();
+  toast(removed ? `检测 ${all.length} 个，移除 ${removed} 个失效` : `检测 ${all.length} 个，全部可用`, 'fa-link-slash');
 }
 
 
@@ -6505,7 +6565,7 @@ init();
   setupStatusTimer = function(){
     bgSchedule('status', Math.max(5,state.settings.statusChangeInterval)*60*1000, async ()=>{
       if (state.partnerStatusList.length===0) return;
-      state.partner.currentStatus = state.partnerStatusList[randInt(0,state.partnerStatusList.length-1)];
+      state.partner.currentStatus = { emoji: (state.statusEmojis||[])[randInt(0,(state.statusEmojis||[]).length-1)] || '', text: (state.statusTexts||[])[randInt(0,(state.statusTexts||[]).length-1)] || '' };
       await saveAll();
       renderStatusTag();
     });
@@ -6810,6 +6870,136 @@ setTimeout(function(){ try{ applyTheme(); applyChatBackground(); }catch(e){} }, 
   // 3. 立即跑一遍
   try { applyChatBackground(); } catch(e){}
   setTimeout(function(){ try { applyChatBackground(); } catch(e){} }, 500);
+})();
+/* ==== 状态池补丁：emoji 和文案分开，随机组合 ==== */
+(function(){
+  function pickStatus(arr){ return (arr && arr.length) ? arr[randInt(0, arr.length-1)] : ''; }
+  function genStatus(){
+    if (window.ensureStatusPools) window.ensureStatusPools();
+    return { emoji: pickStatus(state.statusEmojis), text: pickStatus(state.statusTexts) };
+  }
+
+  window.ensureStatusPools = function(){
+    if (!Array.isArray(state.statusEmojis) || !state.statusEmojis.length){
+      const s = new Set();
+      (state.partnerStatusList||[]).forEach(x=>{ if(x && x.emoji) s.add(x.emoji); });
+      state.statusEmojis = s.size ? [...s] : DEFAULT_STATUS_EMOJIS.slice();
+    }
+    if (!Array.isArray(state.statusTexts) || !state.statusTexts.length){
+      const s = new Set();
+      (state.partnerStatusList||[]).forEach(x=>{ if(x && x.text) s.add(x.text); });
+      state.statusTexts = s.size ? [...s] : UPLOADED_STATUSES.slice();
+    }
+  };
+
+  // 覆盖 loadCharacterInto，切角色时用随机组合
+  const _origLoad = window.loadCharacterInto;
+  window.loadCharacterInto = function(c){
+    _origLoad(c);
+    window.ensureStatusPools();
+    state.partner.currentStatus = genStatus();
+  };
+
+  // 覆盖 setupStatusTimer，定时切换时也用随机组合
+  window.setupStatusTimer = function(){
+    if (typeof window.__bgSchedule !== 'function') return;
+    window.__bgSchedule('status', Math.max(5,state.settings.statusChangeInterval)*60*1000, async ()=>{
+      state.partner.currentStatus = genStatus();
+      await saveAll();
+      renderStatusTag();
+    });
+  };
+
+  window.ensureStatusPools();
+  try { window.setupStatusTimer(); } catch(e){}
+  try { renderStatusTag(); } catch(e){}
+
+  /* 设置页里注入：emoji 池 / 文案池 批量导入 */
+  function injectUI(){
+    const groups = document.querySelectorAll('#view-settings .settings-group');
+    for (const g of groups){
+      const h = g.querySelector('h3');
+      if (h && h.textContent.trim() === '状态'){
+        if (g.querySelector('#statusEmojiPoolBox')) return;
+        const box = document.createElement('div');
+        box.id = 'statusEmojiPoolBox';
+box.innerHTML = `
+  <details class="library-fold">
+    <summary><span>状态 emoji 池 / 文案池</span><i class="fa-solid fa-chevron-down"></i></summary>
+    <div class="library-fold-body">
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;border-top:none;">
+        <div class="label">状态 emoji 池<small>一行一个，显示时随机搭配文案</small></div>
+        <textarea id="statusEmojiPoolInput" class="sheet-input" rows="3" placeholder="😭&#10;😂&#10;🥺"></textarea>
+        <div style="display:flex;gap:8px;">
+          <button class="mini primary" id="statusEmojiPoolAdd" style="flex:1;justify-content:center;">导入</button>
+          <button class="mini danger" id="statusEmojiPoolClear" style="flex:0 0 auto;">清空</button>
+        </div>
+        <div id="statusEmojiPoolList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+      </div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+        <div class="label">状态文案池<small>一行一个</small></div>
+        <textarea id="statusTextPoolInput" class="sheet-input" rows="3" placeholder="想你&#10;工作&#10;摸鱼"></textarea>
+        <div style="display:flex;gap:8px;">
+          <button class="mini primary" id="statusTextPoolAdd" style="flex:1;justify-content:center;">导入</button>
+          <button class="mini danger" id="statusTextPoolClear" style="flex:0 0 auto;">清空</button>
+        </div>
+        <div id="statusTextPoolList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+      </div>
+    </div>
+  </details>
+`;
+        g.appendChild(box);
+
+        const renderPoolList = ()=>{
+          const eBox = document.getElementById('statusEmojiPoolList');
+          const tBox = document.getElementById('statusTextPoolList');
+          if (eBox) eBox.innerHTML = (state.statusEmojis||[]).map(e=>`<span style="font-size:20px;padding:2px 6px;border:1px solid var(--hair);border-radius:8px;background:#fff;">${e}</span>`).join('');
+          if (tBox) tBox.innerHTML = (state.statusTexts||[]).map(t=>`<span style="font-size:12px;padding:4px 8px;border:1px solid var(--hair);border-radius:8px;background:#fff;">${escapeHTML(t)}</span>`).join('');
+        };
+        renderPoolList();
+
+        box.querySelector('#statusEmojiPoolAdd').onclick = async ()=>{
+          const v = document.getElementById('statusEmojiPoolInput').value.split('\n').map(x=>x.trim()).filter(Boolean);
+          if (!v.length) return;
+          window.ensureStatusPools();
+          const set = new Set(state.statusEmojis);
+          v.forEach(x=>set.add(x));
+          state.statusEmojis = [...set];
+          document.getElementById('statusEmojiPoolInput').value = '';
+          await saveAll(); renderPoolList();
+          toast(`emoji 池已更新，共 ${state.statusEmojis.length} 个`);
+        };
+        box.querySelector('#statusEmojiPoolClear').onclick = async ()=>{
+          state.statusEmojis = [];
+          await saveAll(); renderPoolList();
+          toast('已清空 emoji 池','fa-trash');
+        };
+        box.querySelector('#statusTextPoolAdd').onclick = async ()=>{
+          const v = document.getElementById('statusTextPoolInput').value.split('\n').map(x=>x.trim()).filter(Boolean);
+          if (!v.length) return;
+          window.ensureStatusPools();
+          const set = new Set(state.statusTexts);
+          v.forEach(x=>set.add(x));
+          state.statusTexts = [...set];
+          document.getElementById('statusTextPoolInput').value = '';
+          await saveAll(); renderPoolList();
+          toast(`文案池已更新，共 ${state.statusTexts.length} 条`);
+        };
+        box.querySelector('#statusTextPoolClear').onclick = async ()=>{
+          state.statusTexts = [];
+          await saveAll(); renderPoolList();
+          toast('已清空文案池','fa-trash');
+        };
+        return;
+      }
+    }
+  }
+
+  const viewSettings = document.getElementById('view-settings');
+  if (viewSettings){
+    new MutationObserver(injectUI).observe(viewSettings, {childList:true, subtree:true});
+    injectUI();
+  }
 })();
 </script>
 
