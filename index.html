@@ -2994,6 +2994,7 @@ document.getElementById('callPillEnd').addEventListener('click', ()=> endCall(ca
    通用弹层（sheet）与提示输入框
    ============================================================================ */
 function openSheet(html, onOpen){
+  if (_closeSheetTimer){ clearTimeout(_closeSheetTimer); _closeSheetTimer = null; }
   const root = document.getElementById('modalRoot');
   root.innerHTML = `<div class="modal-mask" id="dynMask"><div class="modal-sheet">${html}</div></div>`;
   const mask = document.getElementById('dynMask');
@@ -3001,11 +3002,15 @@ function openSheet(html, onOpen){
   mask.addEventListener('click', e=>{ if (e.target===mask) closeSheet(); });
   if (onOpen) onOpen(root);
 }
+let _closeSheetTimer = null;
 function closeSheet(){
   const mask = document.getElementById('dynMask');
-  if (!mask) return;
-  mask.classList.remove('show');
-  setTimeout(()=> document.getElementById('modalRoot').innerHTML='', 250);
+  if (mask) mask.classList.remove('show');
+  if (_closeSheetTimer) clearTimeout(_closeSheetTimer);
+  _closeSheetTimer = setTimeout(()=>{
+    _closeSheetTimer = null;
+    document.getElementById('modalRoot').innerHTML='';
+  }, 250);
 }
 function promptModal(title, placeholder, cb){
   openSheet(`
