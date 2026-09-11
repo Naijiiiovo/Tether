@@ -1135,6 +1135,54 @@ input, textarea {
 }
 .chat-messages > *, .group-messages > * { position: relative; z-index: 1; }
 </style>
+<style id="letterMultiStyle">
+/* ==== 信件多选 ==== */
+.letter-card { position: relative; }
+.ms-letter-checkbox {
+  display: none;
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: #fff;
+  align-items: center; justify-content: center;
+  z-index: 5;
+}
+.ms-letter-checkbox i { display: none; color: #fff; font-size: 11px; }
+body.letters-multi-mode .ms-letter-checkbox { display: flex; }
+body.letters-multi-mode .letter-card { padding-left: 42px; }
+body.letters-multi-mode .letter-card.ms-letter-selected { background: rgba(61,92,255,.08); }
+body.letters-multi-mode .letter-card.ms-letter-selected .ms-letter-checkbox { background: var(--accent); }
+body.letters-multi-mode .letter-card.ms-letter-selected .ms-letter-checkbox i { display: block; }
+body.letters-multi-mode .letters-bar { display: none !important; }
+body.letters-multi-mode .letters-list { padding-bottom: 90px !important; }
+</style>
+<style id="lettersSpacingFix">
+/* ==== 信件卡片：撑开高度 + 加大间距 ==== */
+.letters-list { gap: 20px !important; padding: 20px 18px !important; }
+.letter-card {
+  padding: 18px 18px 20px !important;
+  border-radius: 16px !important;
+  min-height: 88px !important;
+}
+.letter-head { gap: 12px !important; }
+.letter-head img { width: 44px !important; height: 44px !important; }
+.letter-who { font-size: 15.5px !important; font-weight: 700 !important; }
+.letter-time { font-size: 12px !important; margin-top: 3px !important; }
+.letter-envelope-preview {
+  margin-top: 14px !important;
+  padding: 13px 14px !important;
+  font-size: 13px !important;
+  border-radius: 12px !important;
+}
+.letter-envelope-preview i { font-size: 22px !important; }
+.letter-envelope-preview small { margin-top: 3px !important; }
+
+/* 多选状态下的间距 */
+body.letters-multi-mode .letter-card { padding-left: 46px !important; }
+</style>
 </head>
 <body>
 
@@ -2128,16 +2176,20 @@ function renderStatusTag(){
    ============================================================================ */
 let lastRenderedMsgCount = 0;
 function renderChat(animateCount=0){
-  const pn = document.getElementById('topbarTitle');
-  if (pn) pn.textContent = nameOf('partner');
-  const av = document.getElementById('topbarAvatar');
-  if (av) {
-    av.style.display = 'block';
-    av.onerror = ()=>{ av.onerror=null; av.src = AVATAR_PLACEHOLDER; };
-    av.src = avatarOf('partner');
+  // 只有聊天 tab 才动顶栏，避免在设置/其他页面调 renderChat 时把标题改成对方名字
+  const __activeTab = document.querySelector('.tab-btn.active')?.dataset.view;
+  if (__activeTab === 'chat'){
+    const pn = document.getElementById('topbarTitle');
+    if (pn) pn.textContent = nameOf('partner');
+    const av = document.getElementById('topbarAvatar');
+    if (av) {
+      av.style.display = 'block';
+      av.onerror = ()=>{ av.onerror=null; av.src = AVATAR_PLACEHOLDER; };
+      av.src = avatarOf('partner');
+    }
+    renderStatusTag();
+    setTopbarSub();
   }
-  renderStatusTag();
-  setTopbarSub();
   const box = document.getElementById('chatMessages');
   if (!box) return;
   if (state.messages.length===0){
@@ -3009,7 +3061,77 @@ function renderLetterFilter(){
   });
 }
 
-let lettersPageSize = 5;
+/* ==== 信件多选删除 ==== */
+let lettersMultiMode = false;
+let lettersMultiSet = new Set();
+
+function enterLettersMulti(id){
+  lettersMultiMode = true;
+  lettersMultiSet = new Set();
+  if (id) lettersMultiSet.add(id);
+  document.body.classList.add('letters-multi-mode');
+  updateLettersMultiUI();
+}
+function exitLettersMulti(){
+  lettersMultiMode = false;
+  lettersMultiSet.clear();
+  document.body.classList.remove('letters-multi-mode');
+  document.querySelectorAll('.letter-card').forEach(c=>c.classList.remove('ms-letter-selected'));
+  const bar = document.getElementById('lettersMultiBar');
+  if (bar) bar.remove();
+}
+function toggleLetterMulti(id){
+  if (lettersMultiSet.has(id)) lettersMultiSet.delete(id);
+  else lettersMultiSet.add(id);
+  updateLettersMultiUI();
+}
+function updateLettersMultiUI(){
+  if (!lettersMultiMode) return;
+  const cards = document.querySelectorAll('#lettersList .letter-card');
+  cards.forEach(c=>{
+    if (!c.querySelector('.ms-letter-checkbox')){
+      const cb = document.createElement('div');
+      cb.className = 'ms-letter-checkbox';
+      cb.innerHTML = '<i class="fa-solid fa-check"></i>';
+      c.insertBefore(cb, c.firstChild);
+    }
+    c.classList.toggle('ms-letter-selected', lettersMultiSet.has(c.dataset.id));
+  });
+  let bar = document.getElementById('lettersMultiBar');
+  if (!bar){
+    bar = document.createElement('div');
+    bar.id = 'lettersMultiBar';
+    bar.className = 'multi-select-bar';
+    bar.innerHTML = `
+      <div class="ms-count" id="msLetterCount">已选 0 封</div>
+      <button id="msLetterSelectAll"><i class="fa-solid fa-check-double"></i><span>全选</span></button>
+      <button id="msLetterCancel"><i class="fa-solid fa-xmark"></i><span>取消</span></button>
+      <button id="msLetterDelete" style="color:var(--danger);"><i class="fa-solid fa-trash"></i><span>删除</span></button>
+    `;
+    document.getElementById('phone').appendChild(bar);
+    bar.querySelector('#msLetterSelectAll').onclick = ()=>{
+      const all = document.querySelectorAll('#lettersList .letter-card');
+      if (lettersMultiSet.size >= all.length) lettersMultiSet.clear();
+      else all.forEach(c=>lettersMultiSet.add(c.dataset.id));
+      updateLettersMultiUI();
+    };
+    bar.querySelector('#msLetterCancel').onclick = exitLettersMulti;
+    bar.querySelector('#msLetterDelete').onclick = ()=>{
+      if (!lettersMultiSet.size){ toast('请先选择要删除的信件','fa-triangle-exclamation'); return; }
+      const n = lettersMultiSet.size;
+      confirmModal(`删除选中的 ${n} 封信件？此操作不可撤销。`, async ()=>{
+        state.letters = state.letters.filter(l=>!lettersMultiSet.has(l.id));
+        exitLettersMulti();
+        await saveAll();
+        renderLetters();
+        toast(`已删除 ${n} 封`,'fa-trash');
+      });
+    };
+  }
+  bar.classList.add('show');
+  const cnt = document.getElementById('msLetterCount');
+  if (cnt) cnt.textContent = '已选 ' + lettersMultiSet.size + ' 封';
+}
 let lettersShownCount = 5;
 function renderLetters(){
   const list = document.getElementById('lettersList');
@@ -3033,11 +3155,29 @@ function renderLetters(){
   const visible = sorted.slice(0, lettersShownCount);
   const hasMore = sorted.length > visible.length;
   list.innerHTML = visible.map(letterHTML).join('') + (hasMore ? `<button class="mini" id="lettersLoadMoreBtn" style="width:100%;justify-content:center;margin-top:6px;">加载更多（还有 ${sorted.length - visible.length} 封）</button>` : '');
-  list.querySelectorAll('.letter-card').forEach(card=>{
-    card.addEventListener('click', ()=>openLetterDetail(card.dataset.id));
+list.querySelectorAll('.letter-card').forEach(card=>{
+  card.addEventListener('click', (e)=>{
+    if (lettersMultiMode){ e.preventDefault(); e.stopPropagation(); toggleLetterMulti(card.dataset.id); return; }
+    openLetterDetail(card.dataset.id);
   });
+  let pressTimer = null;
+  const startPress = ()=>{
+    pressTimer = setTimeout(()=>{
+      pressTimer = null;
+      if (navigator.vibrate) navigator.vibrate(15);
+      enterLettersMulti(card.dataset.id);
+    }, 500);
+  };
+  const cancelPress = ()=>{ if (pressTimer){ clearTimeout(pressTimer); pressTimer = null; } };
+  card.addEventListener('pointerdown', startPress, {passive:true});
+  card.addEventListener('pointerup', cancelPress, {passive:true});
+  card.addEventListener('pointercancel', cancelPress, {passive:true});
+  card.addEventListener('pointerleave', cancelPress, {passive:true});
+  card.addEventListener('contextmenu', e=>e.preventDefault());
+});
   const moreBtn = document.getElementById('lettersLoadMoreBtn');
   if (moreBtn) moreBtn.addEventListener('click', ()=>{ lettersShownCount += lettersPageSize; renderLetters(); });
+  if (lettersMultiMode) updateLettersMultiUI();
 }
 document.querySelectorAll('#lettersFilter [data-letter-filter]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
