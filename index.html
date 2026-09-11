@@ -1126,14 +1126,12 @@ input, textarea {
 </style>
 
 <style id="chatBgLayerStyle">
-.chat-messages, .group-messages { background-image: none !important; position: relative; }
+.chat-messages, .group-messages { position: relative; isolation: isolate; }
 .chat-messages::before, .group-messages::before {
   content:''; position:absolute; inset:0;
-  background-image: var(--chat-bg-url, none);
-  background-size: cover; background-position: center;
-  opacity: var(--chat-bg-opacity, 1);
+  background: var(--shell-bg);
+  opacity: var(--chat-bg-overlay-opacity, 0);
   pointer-events:none; z-index:0;
-  transition: opacity .15s ease;
 }
 .chat-messages > *, .group-messages > * { position: relative; z-index: 1; }
 </style>
@@ -1601,27 +1599,163 @@ function activeCharacterSnapshot(){
     me: state.me, partner: state.partner, partnerStatusList: state.partnerStatusList,
     messages: state.messages, posts: state.posts, letters: state.letters };
 }
-async function saveAll(){
-  const idx = state.characters.findIndex(c=>c.id===state.activeCharacterId);
-  if (idx>-1) state.characters[idx] = activeCharacterSnapshot();
-  localStorage.setItem('app_settings', JSON.stringify(state.settings));
-  localStorage.setItem('app_active_char', state.activeCharacterId || '');
-  localStorage.setItem('app_font', JSON.stringify({name:state.fontName, url:state.fontDataUrl}));
-  await localforage.setItem('app_cards', state.cards);
-  await localforage.setItem('app_stickers', state.stickers);
-  await localforage.setItem('app_kaomoji', state.kaomoji);
-  await localforage.setItem('app_pokes', state.pokes);
-  await localforage.setItem('app_image_library', state.imageLibrary);
-  await localforage.setItem('app_characters', state.characters);
-  await localforage.setItem('app_user_presets', state.userPresets);
-  await localforage.setItem('app_group_chats', state.groupChats);
-  await localforage.setItem('app_group_messages', state.groupMessages);
-  await localforage.setItem('app_playlist', state.playlist);
-  await localforage.setItem('app_music', state.music);
+let _saveErrNotified = false;
+let _saveQueue = Promise.resolve();
+let _lastSavedStateVersion = 0;
+
+/*
+ * Tether 持久化层修复：
+ * 1. 所有保存操作串行执行，避免多个 saveAll() 同时写入导致“后保存的旧快照覆盖新数据”。
+ * 2. 聊天/角色数据以 localforage 为主，localStorage 的 app_urgent 只作为灾难恢复兜底，
+ *    不再因为它是旧快照而把刚发送的消息覆盖掉。
+ * 3. settings 原来只从 app_settings 读取、却没有在 saveAll() 中写回，现在同步保存。
+ * 4. 导入后立即落盘，并兼容旧版“顶层 messages/me/partner”数据。
+ */
+function makeUrgentBackup(){
+  try{
+    const backup = {
+      version: 3,
+      c: state.characters.map(c=>({
+        ...c,
+        me: { ...(c.me||{}), avatar: c.me?.avatar || '' },
+        partner: { ...(c.partner||{}), avatar: c.partner?.avatar || '' },
+        messages: (c.messages||[]).slice(-80).map(m=>{
+          const mm = {...m};
+          if (mm.sticker && mm.sticker.length > 20000) mm.sticker = '';
+          if (mm.image && mm.image.length > 20000) mm.image = '';
+          if (mm.video && mm.video.length > 20000) mm.video = '';
+          return mm;
+        }),
+        posts: (c.posts||[]).slice(-20),
+        letters: (c.letters||[]).slice(-20)
+      })),
+      a: state.activeCharacterId
+    };
+    let str = JSON.stringify(backup);
+    if(str.length > 4500000){
+      backup.c = backup.c.map(c=>({...c, messages:(c.messages||[]).slice(-20)}));
+      str = JSON.stringify(backup);
+    }
+    localStorage.setItem('app_urgent', str);
+  }catch(e){
+    console.warn('Tether 紧急备份失败：', e);
+  }
 }
+
+function saveAll(){
+  /*
+   * 关键：把每一次保存排队。
+   * 原来的 saveAll() 会被大量地方不 await 地调用，多个异步写入可能乱序完成，
+   * 结果就是“界面里有消息，刷新后却回到旧状态”。
+   */
+  _saveQueue = _saveQueue.then(async ()=>{
+    const idx = state.characters.findIndex(c=>c.id===state.activeCharacterId);
+    if(idx>-1) state.characters[idx] = activeCharacterSnapshot();
+
+    // 设置项必须单独保存；背景图就在 state.settings.chatBg 里。
+    // 设置里可能包含 base64 背景图；localStorage 容量很小，写满后会导致
+    // “界面提示保存成功，但刷新后背景/磨砂参数全部恢复默认”。
+    // 因此 localforage 才是设置的主存储，localStorage 仅保留轻量兜底。
+    const settingsSnapshot = JSON.parse(JSON.stringify(state.settings || DEFAULT_SETTINGS));
+    try{
+      await localforage.setItem('app_settings', settingsSnapshot);
+      // 背景单独存一份，避免以后某个设置字段损坏时背景一起丢失。
+      await localforage.setItem('app_chat_background', {
+        data: settingsSnapshot.chatBg || '',
+        opacity: settingsSnapshot.chatBgOpacity != null ? settingsSnapshot.chatBgOpacity : 1
+      });
+    }catch(e){
+      console.warn('localforage 设置保存失败：', e);
+    }
+    try{
+      localStorage.setItem('app_settings', JSON.stringify(settingsSnapshot));
+      if(state.activeCharacterId) localStorage.setItem('app_active_char', String(state.activeCharacterId));
+    }catch(e){
+      console.warn('localStorage 设置兜底保存失败（可能已满）：', e);
+    }
+
+    // 头像独立保存，防止旧版/大数据迁移时角色记录中的头像被清空。
+    try{
+      const avatarBackup = {};
+      state.characters.forEach(c=>{
+        avatarBackup[c.id] = { meAvatar:c.me?.avatar||'', partnerAvatar:c.partner?.avatar||'', meBanner:c.me?.banner||'', partnerBanner:c.partner?.banner||'' };
+      });
+      await localforage.setItem('app_character_avatars', avatarBackup);
+    }catch(e){ console.warn('头像独立保存失败：',e); }
+
+    // 紧急小备份只用于真正的存储故障恢复，不作为正常读取源。
+    makeUrgentBackup();
+
+    const jobs = [
+      ['app_characters', state.characters],
+      ['app_cards', state.cards],
+      ['app_kaomoji', state.kaomoji],
+      ['app_pokes', state.pokes],
+      ['app_user_presets', state.userPresets],
+      ['app_group_chats', state.groupChats],
+      ['app_group_messages', state.groupMessages],
+      ['app_playlist', state.playlist],
+      ['app_music', state.music],
+      ['app_stickers', state.stickers],
+      ['app_image_library', state.imageLibrary]
+    ];
+
+    let failed = 0;
+    for(const [key,val] of jobs){
+      try{
+        await localforage.setItem(key,val);
+      }catch(e){
+        failed++;
+        console.warn('localforage 保存失败：'+key,e);
+      }
+    }
+
+    if(failed && !_saveErrNotified && typeof toast==='function'){
+      _saveErrNotified = true;
+      toast('存储空间不足，部分数据未能保存','fa-triangle-exclamation');
+    }
+
+    _lastSavedStateVersion++;
+    try { if (typeof applyChatBackground === 'function') applyChatBackground(); } catch(_){}
+  }).catch(e=>{
+    console.error('Tether saveAll error:',e);
+    if(typeof toast==='function') toast('数据保存失败：'+(e.message||e),'fa-triangle-exclamation');
+  });
+
+  return _saveQueue;
+}
+
 async function loadAll(){
-  const s = localStorage.getItem('app_settings');
-  state.settings = s ? {...DEFAULT_SETTINGS, ...JSON.parse(s)} : {...DEFAULT_SETTINGS};
+  // 设置优先从 localforage 读取：这里可以可靠保存 base64 背景图，
+  // 不会被 localStorage 约 5MB 的容量限制静默截断/写失败。
+  let loadedSettings = null;
+  try{
+    const lfSettings = await localforage.getItem('app_settings');
+    if(lfSettings && typeof lfSettings === 'object') loadedSettings = lfSettings;
+  }catch(e){
+    console.warn('localforage 设置读取失败：',e);
+  }
+  if(!loadedSettings){
+    try{
+      const rawSettings = localStorage.getItem('app_settings');
+      if(rawSettings) loadedSettings = JSON.parse(rawSettings);
+    }catch(e){
+      console.warn('localStorage 设置读取失败：',e);
+    }
+  }
+  state.settings = {...DEFAULT_SETTINGS,...(loadedSettings || {})};
+  // 背景图和“不透明度”使用独立存储作为最终来源。
+  // 旧版 app_settings 里可能一直留着 chatBgOpacity=1，不能让这个旧值覆盖用户刚调好的磨砂效果。
+  try{
+    const bgStore = await localforage.getItem('app_chat_background');
+    if(bgStore && typeof bgStore === 'object'){
+      if(bgStore.data) state.settings.chatBg = bgStore.data;
+      if(bgStore.opacity != null && Number.isFinite(+bgStore.opacity)){
+        state.settings.chatBgOpacity = Math.max(0.05, Math.min(1, +bgStore.opacity));
+      }
+    }
+  }catch(e){ console.warn('独立背景设置读取失败：',e); }
+
   state.cards = (await localforage.getItem('app_cards')) || [...UPLOADED_CARDS];
   state.stickers = (await localforage.getItem('app_stickers')) || [];
   state.kaomoji = (await localforage.getItem('app_kaomoji')) || [...UPLOADED_KAOMOJI];
@@ -1631,23 +1765,62 @@ async function loadAll(){
   state.groupChats = (await localforage.getItem('app_group_chats')) || [];
   state.groupMessages = (await localforage.getItem('app_group_messages')) || [];
   state.playlist = (await localforage.getItem('app_playlist')) || [];
-  state.music = {...state.music, ...((await localforage.getItem('app_music')) || {})};
-  state.characters = (await localforage.getItem('app_characters')) || [];
-  if (state.characters.length===0){
-    state.characters = [freshCharacter('默认角色')];
-  }
-  const savedActive = localStorage.getItem('app_active_char');
-  let target = state.characters.find(c=>c.id===savedActive) || state.characters[0];
-  loadCharacterInto(target);
-  const fontRaw = localStorage.getItem('app_font');
-  if (fontRaw){
+  state.music = {...state.music,...((await localforage.getItem('app_music')) || {})};
+
+  // 正常情况下只认 localforage 的完整角色数据。
+  let lfChars = [];
+  try{ lfChars = (await localforage.getItem('app_characters')) || []; }catch(e){}
+
+  // 只有 localforage 完全没有角色数据时，才启用紧急备份。
+  if(!Array.isArray(lfChars) || lfChars.length===0){
     try{
-      const f = JSON.parse(fontRaw);
-      if (f.name && f.url){ state.fontName=f.name; state.fontDataUrl=f.url; await applyCustomFont(f.name, f.url); }
+      const urgentRaw = localStorage.getItem('app_urgent');
+      if(urgentRaw){
+        const u = JSON.parse(urgentRaw);
+        if(u && Array.isArray(u.c) && u.c.length){
+          lfChars = u.c;
+          if(u.a) localStorage.setItem('app_active_char',u.a);
+        }
+      }
     }catch(e){}
   }
+
+  state.characters = Array.isArray(lfChars) ? lfChars : [];
+  if(state.characters.length===0) state.characters=[freshCharacter('默认角色')];
+
+  try{
+    const avatarBackup = await localforage.getItem('app_character_avatars');
+    if(avatarBackup && typeof avatarBackup === 'object'){
+      state.characters.forEach(c=>{
+        const b=avatarBackup[c.id]; if(!b) return;
+        c.me=c.me||{}; c.partner=c.partner||{};
+        if(!c.me.avatar && b.meAvatar) c.me.avatar=b.meAvatar;
+        if(!c.partner.avatar && b.partnerAvatar) c.partner.avatar=b.partnerAvatar;
+        if(!c.me.banner && b.meBanner) c.me.banner=b.meBanner;
+        if(!c.partner.banner && b.partnerBanner) c.partner.banner=b.partnerBanner;
+      });
+    }
+  }catch(e){ console.warn('头像独立读取失败：',e); }
+
+  const savedActive = localStorage.getItem('app_active_char');
+  const target = state.characters.find(c=>c.id===savedActive) || state.characters[0];
+  loadCharacterInto(target);
+
+  const fontRaw = localStorage.getItem('app_font');
+  if(fontRaw){
+    try{
+      const f=JSON.parse(fontRaw);
+      if(f.name && f.url){
+        state.fontName=f.name;
+        state.fontDataUrl=f.url;
+        await applyCustomFont(f.name,f.url);
+      }
+    }catch(e){}
+  }
+
   normalizeChatMediaMessages();
 }
+
 function normalizeChatMediaMessages(){
   if(!Array.isArray(state.messages)) return;
   const out=[]; let changed=false;
@@ -1662,9 +1835,12 @@ function normalizeChatMediaMessages(){
   if(changed){ state.messages=out.sort((a,b)=>(a.time||0)-(b.time||0)); saveAll(); }
 }
 function loadCharacterInto(character){
-  state.activeCharacterId = character.id;
-  state.me = character.me;
-  state.partner = character.partner;
+  if(!character) return;
+  const base=freshCharacter(character.label || '默认角色');
+  state.activeCharacterId = character.id || base.id;
+  state.me = {...base.me,...(character.me||{})};
+  state.partner = {...base.partner,...(character.partner||{})};
+  character.me=state.me; character.partner=state.partner;
   state.partnerStatusList = character.partnerStatusList && character.partnerStatusList.length ? character.partnerStatusList : buildDefaultStatusList();
   state.messages = character.messages || [];
   state.posts = character.posts || [];
@@ -1785,18 +1961,12 @@ styleTag.textContent = `
   .setting-row .unit, .setting-row .val { font-size: ${Math.max(10,fs-2)}px !important; }
   .music-section-note { font-size: ${Math.max(10,fs-4)}px !important; }
 `;
-const bgOpacity = (state.settings.chatBgOpacity ?? 1);
+  const bgOpacity = (state.settings.chatBgOpacity ?? 1);
 const bgUrl = state.settings.chatBg ? `url("${state.settings.chatBg}")` : 'none';
-['chatMessages','groupMessages'].forEach(id=>{
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.style.setProperty('--chat-bg-url', bgUrl);
-  el.style.setProperty('--chat-bg-opacity', bgOpacity);
-});
-  const gm = document.getElementById('groupMessages');
-  if (gm) gm.style.backgroundImage = state.settings.chatBg ? `url("${state.settings.chatBg}")` : 'none';
-  const notch = document.getElementById('dynamicIsland');
-  if(notch) notch.style.display = state.settings.dynamicIsland ? 'block' : 'none';
+document.documentElement.style.setProperty('--chat-bg-url', bgUrl);
+document.documentElement.style.setProperty('--chat-bg-opacity', bgOpacity);
+const notchEl = document.getElementById('dynamicIsland');
+if(notchEl) notchEl.style.display = state.settings.dynamicIsland ? 'block' : 'none';
 
   // 应用气泡样式
   const bubbleStyle = document.getElementById('dynamicBubbleStyle');
@@ -1805,6 +1975,8 @@ const bgUrl = state.settings.chatBg ? `url("${state.settings.chatBg}")` : 'none'
   } else {
     bubbleStyle.textContent = state.settings.bubbleCustomCSS;
   }
+  // 应用聊天背景（v1 原来漏了这一步，只改了 CSS 变量，容器没真正拿到图片）
+  if (typeof applyChatBackground === 'function') applyChatBackground();
 }
 async function applyCustomFont(name, url){
   try{
@@ -1971,6 +2143,7 @@ function renderChat(animateCount=0){
   if (state.messages.length===0){
     box.innerHTML = `<div class="chat-empty"><i class="fa-solid fa-comment-dots"></i><div>还没有消息，说点什么吧</div></div>`;
     lastRenderedMsgCount = 0;
+    applyChatBackground();
     return;
   }
 
@@ -2014,6 +2187,7 @@ function renderChat(animateCount=0){
     }
   }
   lastRenderedMsgCount = state.messages.length;
+  applyChatBackground();
   scrollChatToBottom();
 }
 function scrollChatToBottom(){
@@ -4100,19 +4274,48 @@ function bindSettingsEvents(){
   document.getElementById('setPartnerName').addEventListener('change', async e=>{ state.partner.name=e.target.value; await saveAll(); renderProfileTab(); renderChat(); });
   document.getElementById('setMyAvatar').addEventListener('click', ()=> pickImage(async url=>{ state.me.avatar=url; await saveAll(); renderSettings(); renderChat(); }));
   document.getElementById('setPartnerAvatar').addEventListener('click', ()=> pickImage(async url=>{ state.partner.avatar=url; await saveAll(); renderSettings(); renderChat(); }));
-  document.getElementById('setChatBg').addEventListener('click', ()=> pickImage(async url=>{ s.chatBg=url; await saveAll(); applyTheme(); renderSettings(); toast('背景已更新'); }));
-  document.getElementById('clearChatBg').addEventListener('click', async ()=>{ s.chatBg=''; await saveAll(); applyTheme(); renderSettings(); toast('已恢复默认背景'); });
+  document.getElementById('setChatBg').addEventListener('click', ()=> pickImage(async url=>{
+    state.settings.chatBg = url;
+    applyChatBackground();
+    await saveAll();
+    renderSettings();
+    renderChat();
+    applyChatBackground();
+    applyTheme();
+    toast('背景已更新');
+  }));
+  document.getElementById('clearChatBg').addEventListener('click', async ()=>{
+    state.settings.chatBg = '';
+    applyChatBackground();
+    await saveAll();
+    renderSettings();
+    renderChat();
+    applyChatBackground();
+    applyTheme();
+    toast('已恢复默认背景');
+  });
 const chatBgOp = document.getElementById('setChatBgOpacity');
 if (chatBgOp){
+  let bgOpacitySaveTimer = null;
   chatBgOp.addEventListener('input', e=>{
-    s.chatBgOpacity = +e.target.value;
+    s.chatBgOpacity = Math.max(0.05, Math.min(1, +e.target.value || 1));
     const v = document.getElementById('setChatBgOpacityVal');
     if (v) v.textContent = Math.round(s.chatBgOpacity*100)+'%';
     const layer = document.getElementById('chatBgPreviewLayer');
     if (layer) layer.style.opacity = s.chatBgOpacity;
     applyTheme();
+    applyChatBackground();
+    clearTimeout(bgOpacitySaveTimer);
+    bgOpacitySaveTimer = setTimeout(async ()=>{
+      try{ await localforage.setItem('app_chat_background', {data:s.chatBg || '', opacity:s.chatBgOpacity}); }catch(_){}
+      await saveAll();
+    }, 80);
   });
-  chatBgOp.addEventListener('change', ()=> saveAll());
+  chatBgOp.addEventListener('change', async ()=>{
+    clearTimeout(bgOpacitySaveTimer);
+    try{ await localforage.setItem('app_chat_background', {data:s.chatBg || '', opacity:s.chatBgOpacity}); }catch(_){}
+    await saveAll();
+  });
 }
 
   // 气泡样式管理
@@ -4452,29 +4655,134 @@ if (chatBgOp){
     const idx = state.characters.findIndex(c=>c.id===state.activeCharacterId);
     if (idx>-1) state.characters[idx] = activeCharacterSnapshot();
     downloadJSON({cards:state.cards, stickers:state.stickers, kaomoji:state.kaomoji, pokes:state.pokes, imageLibrary:state.imageLibrary, groupChats:state.groupChats, groupMessages:state.groupMessages, playlist:state.playlist, music:state.music, characters:state.characters, activeCharacterId:state.activeCharacterId, settings:state.settings}, 'chuanxun-backup.json');
+localStorage.setItem('lastBackupAt', String(Date.now()));
+localStorage.setItem('lastBackupAt', String(Date.now()));
   });
   document.getElementById('importAllBtn').addEventListener('click', ()=> document.getElementById('dataImportFile').click());
   document.getElementById('dataImportFile').onchange = async e=>{
-    const f = e.target.files[0]; if (!f) return;
+    const f = e.target.files[0];
+    if (!f) return;
+
     try{
+      showLoading('正在导入并保存数据…');
       const data = JSON.parse(await f.text());
-      state.cards = data.cards ?? state.cards;
-      state.stickers = data.stickers ?? state.stickers;
-      state.kaomoji = data.kaomoji ?? state.kaomoji;
-      state.pokes = data.pokes ?? state.pokes;
-      state.imageLibrary = data.imageLibrary ?? state.imageLibrary;
-      state.groupChats = data.groupChats ?? state.groupChats;
-      state.groupMessages = data.groupMessages ?? state.groupMessages;
-      state.playlist = data.playlist ?? state.playlist;
-      state.music = {...state.music, ...(data.music||{})};
-      state.settings = {...DEFAULT_SETTINGS, ...(data.settings||{})};
-      if (Array.isArray(data.characters) && data.characters.length){
-        state.characters = data.characters;
-        loadCharacterInto(state.characters.find(c=>c.id===data.activeCharacterId) || state.characters[0]);
+
+      // 通用资源
+      if (data.cards != null) state.cards = Array.isArray(data.cards) ? data.cards : state.cards;
+      if (data.stickers != null) state.stickers = Array.isArray(data.stickers) ? data.stickers : state.stickers;
+      if (data.kaomoji != null) state.kaomoji = Array.isArray(data.kaomoji) ? data.kaomoji : state.kaomoji;
+      if (data.pokes != null) state.pokes = Array.isArray(data.pokes) ? data.pokes : state.pokes;
+      if (data.imageLibrary != null) state.imageLibrary = Array.isArray(data.imageLibrary) ? data.imageLibrary : state.imageLibrary;
+      if (data.groupChats != null) state.groupChats = Array.isArray(data.groupChats) ? data.groupChats : state.groupChats;
+      if (data.groupMessages != null) state.groupMessages = Array.isArray(data.groupMessages) ? data.groupMessages : state.groupMessages;
+      if (data.playlist != null) state.playlist = Array.isArray(data.playlist) ? data.playlist : state.playlist;
+      if (data.music && typeof data.music === 'object') state.music = {...state.music,...data.music};
+      if (data.userPresets != null) state.userPresets = Array.isArray(data.userPresets) ? data.userPresets : state.userPresets;
+
+      // 设置：同时兼容旧版把聊天背景直接放在顶层的格式。
+      if (data.settings && typeof data.settings === 'object'){
+        state.settings = {...DEFAULT_SETTINGS,...state.settings,...data.settings};
       }
-      await saveAll(); applyTheme(); renderAll(); setupProactive(); setupLetterProactive(); setupAvatarSwap(); setupAutoPost(); setupStatusTimer();
-      toast('数据已导入');
-    }catch(err){ toast('导入失败：'+err.message,'fa-triangle-exclamation'); }
+      if (data.chatBg && !state.settings.chatBg) state.settings.chatBg = data.chatBg;
+      if (data.background && !state.settings.chatBg) state.settings.chatBg = data.background;
+      if (data.chatBackground && !state.settings.chatBg) state.settings.chatBg = data.chatBackground;
+      if (data.chatBgOpacity != null) state.settings.chatBgOpacity = +data.chatBgOpacity;
+
+      /*
+       * 角色数据：
+       * 新版：characters[]
+       * 旧版：me / partner / messages / posts / letters 在最外层。
+       */
+      let importedCharacters = Array.isArray(data.characters) ? data.characters : [];
+
+      if (!importedCharacters.length && (
+        Array.isArray(data.messages) ||
+        data.me ||
+        data.partner ||
+        Array.isArray(data.posts) ||
+        Array.isArray(data.letters)
+      )){
+        const old = freshCharacter(data.characterLabel || data.label || '默认角色');
+        old.id = data.activeCharacterId || data.characterId || old.id;
+        old.me = data.me ? {...old.me,...data.me} : old.me;
+        old.partner = data.partner ? {...old.partner,...data.partner} : old.partner;
+        old.partnerStatusList = Array.isArray(data.partnerStatusList)
+          ? data.partnerStatusList
+          : (Array.isArray(data.statuses) ? data.statuses : old.partnerStatusList);
+        old.messages = Array.isArray(data.messages) ? data.messages : [];
+        old.posts = Array.isArray(data.posts) ? data.posts : [];
+        old.letters = Array.isArray(data.letters) ? data.letters : [];
+        importedCharacters = [old];
+      }
+
+      if(importedCharacters.length){
+        // 补齐旧角色缺失字段，避免旧版数据加载后变成 undefined。
+        state.characters = importedCharacters.map((c,i)=>{
+          const base = freshCharacter(c.label || ('角色'+(i+1)));
+          return {
+            ...base,
+            ...c,
+            id: c.id || base.id,
+            me: {...base.me,...(c.me||{})},
+            partner: {...base.partner,...(c.partner||{})},
+            partnerStatusList: Array.isArray(c.partnerStatusList) && c.partnerStatusList.length
+              ? c.partnerStatusList
+              : base.partnerStatusList,
+            messages: Array.isArray(c.messages) ? c.messages : [],
+            posts: Array.isArray(c.posts) ? c.posts : [],
+            letters: Array.isArray(c.letters) ? c.letters : []
+          };
+        });
+
+        const wanted = data.activeCharacterId || localStorage.getItem('app_active_char');
+        const active = state.characters.find(c=>c.id===wanted) || state.characters[0];
+        loadCharacterInto(active);
+      }else if(data.activeCharacterId){
+        const active = state.characters.find(c=>c.id===data.activeCharacterId);
+        if(active) loadCharacterInto(active);
+      }else{
+        const idx2 = state.characters.findIndex(c=>c.id===state.activeCharacterId);
+        if(idx2>-1){
+          state.characters[idx2] = {
+            ...state.characters[idx2],
+            me: state.me,
+            partner: state.partner,
+            partnerStatusList: state.partnerStatusList,
+            messages: state.messages,
+            posts: state.posts,
+            letters: state.letters
+          };
+        }
+      }
+
+      // 旧版可能把当前聊天对象直接放在顶层，即使没有完整 characters。
+      if(!importedCharacters.length){
+        if(data.me) state.me = {...state.me,...data.me};
+        if(data.partner) state.partner = {...state.partner,...data.partner};
+        if(Array.isArray(data.messages)) state.messages = data.messages;
+        if(Array.isArray(data.posts)) state.posts = data.posts;
+        if(Array.isArray(data.letters)) state.letters = data.letters;
+      }
+
+      // 先拆分“文字+表情包”消息，再一次性等待持久化完成。
+      normalizeChatMediaMessages();
+      await saveAll();
+
+      applyTheme();
+      renderAll();
+      setupProactive();
+      setupLetterProactive();
+      setupAvatarSwap();
+      setupAutoPost();
+      setupStatusTimer();
+
+      hideLoading();
+      toast('数据已导入并永久保存');
+    }catch(err){
+      hideLoading();
+      console.error('导入失败：',err);
+      toast('导入失败：'+err.message,'fa-triangle-exclamation');
+    }
     e.target.value='';
   };
   document.getElementById('clearMsgsBtn').addEventListener('click', ()=> confirmModal('清空所有聊天消息？此操作不可撤销。', async ()=>{ state.messages=[]; await saveAll(); renderAll(); }));
@@ -4914,7 +5222,7 @@ function extractNeteaseId(raw){
   const text=String(raw||'');
   return (text.match(/[?&]id=(\d+)/)||text.match(/\/song\/(\d+)/)||text.match(/song\?id=(\d+)/)||[])[1]||'';
 }
-async function fetchNeteaseMeta(id){
+async function fetchNeteaseMeta_unused(id){
   if(!id) return {};
   if(NETEASE_META_CACHE[id]) return NETEASE_META_CACHE[id];
   // 先用第三方代理抓网页标题（网易云官方接口浏览器拿不到，因为跨域）
@@ -4963,10 +5271,7 @@ async function fetchNeteaseMeta(id){
   }
   return {};
 }
-async function fetchNeteaseLyrics(id){
-  if(!id)return '';
-  try{const r=await fetch(`https://music.163.com/api/song/lyric?id=${id}&lv=1&kv=1&tv=-1`);if(!r.ok)return '';const j=await r.json();return parseLrcText(j?.lrc?.lyric||j?.klyric?.lyric||'');}catch(e){return '';}
-}
+async function fetchNeteaseLyrics_unused(id){ return ''; }
 async function importMusicFiles(files){showLoading('正在读取歌曲元数据…');for(const f of files){const meta=await readMusicMeta(f);const src=await fileToDataURL(f);state.playlist.push({id:'song_'+Date.now()+Math.random(),title:meta.title||'未知歌曲',artist:meta.artist||'未知歌手',album:meta.album||'',lyrics:meta.lyrics||'',src,type:'local',name:f.name});}await saveAll();hideLoading();musicRender();renderSettings();toast(`已导入 ${files.length} 首歌曲`,'fa-music');}
 function parseAudioFilenameMeta(url){
   try{
@@ -5254,7 +5559,7 @@ function setupGroupCardSwipe(list){
 }
 function renderGroupChat(g){const list=document.getElementById('groupListView'),chat=document.getElementById('groupChatView');list.style.display='none';chat.style.display='flex';
   const tb=document.getElementById('topbar');if(tb)tb.style.display='none';
-  const ms=groupMemberData(g);chat.innerHTML=`<div class="group-chat-head"><button class="group-back" id="groupBack"><i class="fa-solid fa-chevron-left"></i></button><div class="group-head-avatars">${g.avatar?`<img src="${g.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--card);">`:ms.slice(0,4).map(m=>`<img src="${m.c.partner.avatar||AVATAR_PLACEHOLDER}">`).join('')}</div><div class="group-head-title"><b>${escapeHTML(g.name)}(${ms.length+1})</b></div><button class="group-back" id="groupSet"><i class="fa-solid fa-sliders"></i></button></div><div class="group-messages" id="groupMessages"></div><div class="group-composer chat-composer"><div class="cc-quote-bar" id="groupQuoteBar" style="display:none;"><div class="cc-quote-text" id="groupQuoteText"></div><button id="groupQuoteRemove"><i class="fa-solid fa-xmark"></i></button></div><div class="group-plus-panel" id="groupPlusPanel"><div class="group-plus-grid"><label class="group-plus-item"><i class="fa-solid fa-image"></i><span>相册</span><input type="file" id="groupImageInline" class="hidden-input" accept="image/*"></label><label class="group-plus-item"><i class="fa-solid fa-camera"></i><span>拍照</span><input type="file" id="groupCameraInline" class="hidden-input" accept="image/*" capture="environment"></label><label class="group-plus-item"><i class="fa-solid fa-video"></i><span>视频</span><input type="file" id="groupVideoInline" class="hidden-input" accept="video/*"></label><button class="group-plus-item" id="groupCallBtn"><i class="fa-solid fa-phone"></i><span>通话</span></button><button class="group-plus-item" id="groupMoneyBtn"><i class="fa-solid fa-gift"></i><span>红包</span></button><button class="group-plus-item" id="groupTransferBtn"><i class="fa-solid fa-money-bill-transfer"></i><span>转账</span></button><button class="group-plus-item" id="groupPokeBtn"><i class="fa-solid fa-hand-pointer"></i><span>拍一拍</span></button><label class="group-plus-item"><i class="fa-solid fa-file"></i><span>文件</span><input type="file" class="hidden-input" id="groupFileInline"></label></div></div><div class="group-emoji-panel" id="groupEmojiPanel"><div class="group-emoji-tabs"><button class="active" data-getab="emoji">表情</button><button data-getab="kaomoji">颜文字</button><button data-getab="sticker">贴纸</button></div><div id="groupEmojiGrid" class="group-emoji-grid"></div></div><div class="group-composer-row"><button class="cc-icon-btn" id="groupPlusBtn"><i class="fa-solid fa-circle-plus"></i></button><textarea id="groupInput" rows="1" placeholder="说点什么…"></textarea><button class="cc-icon-btn" id="groupSpeakBtn" title="让对方发信息"><i class="fa-solid fa-comment-dots"></i></button><button class="cc-icon-btn" id="groupEmojiBtn"><i class="fa-solid fa-face-smile"></i></button><button class="cc-send-btn" id="groupSendBtn"><i class="fa-solid fa-paper-plane"></i></button></div></div>`;groupRenderMessages(g);groupRenderEmoji();const gmBg=document.getElementById('groupMessages');if(gmBg)gmBg.style.backgroundImage=state.settings.chatBg?`url("${state.settings.chatBg}")`:'none';
+  const ms=groupMemberData(g);chat.innerHTML=`<div class="group-chat-head"><button class="group-back" id="groupBack"><i class="fa-solid fa-chevron-left"></i></button><div class="group-head-avatars">${g.avatar?`<img src="${g.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--card);">`:ms.slice(0,4).map(m=>`<img src="${m.c.partner.avatar||AVATAR_PLACEHOLDER}">`).join('')}</div><div class="group-head-title"><b>${escapeHTML(g.name)}(${ms.length+1})</b></div><button class="group-back" id="groupSet"><i class="fa-solid fa-sliders"></i></button></div><div class="group-messages" id="groupMessages"></div><div class="group-composer chat-composer"><div class="cc-quote-bar" id="groupQuoteBar" style="display:none;"><div class="cc-quote-text" id="groupQuoteText"></div><button id="groupQuoteRemove"><i class="fa-solid fa-xmark"></i></button></div><div class="group-plus-panel" id="groupPlusPanel"><div class="group-plus-grid"><label class="group-plus-item"><i class="fa-solid fa-image"></i><span>相册</span><input type="file" id="groupImageInline" class="hidden-input" accept="image/*"></label><label class="group-plus-item"><i class="fa-solid fa-camera"></i><span>拍照</span><input type="file" id="groupCameraInline" class="hidden-input" accept="image/*" capture="environment"></label><label class="group-plus-item"><i class="fa-solid fa-video"></i><span>视频</span><input type="file" id="groupVideoInline" class="hidden-input" accept="video/*"></label><button class="group-plus-item" id="groupCallBtn"><i class="fa-solid fa-phone"></i><span>通话</span></button><button class="group-plus-item" id="groupMoneyBtn"><i class="fa-solid fa-gift"></i><span>红包</span></button><button class="group-plus-item" id="groupTransferBtn"><i class="fa-solid fa-money-bill-transfer"></i><span>转账</span></button><button class="group-plus-item" id="groupPokeBtn"><i class="fa-solid fa-hand-pointer"></i><span>拍一拍</span></button><label class="group-plus-item"><i class="fa-solid fa-file"></i><span>文件</span><input type="file" class="hidden-input" id="groupFileInline"></label></div></div><div class="group-emoji-panel" id="groupEmojiPanel"><div class="group-emoji-tabs"><button class="active" data-getab="emoji">表情</button><button data-getab="kaomoji">颜文字</button><button data-getab="sticker">贴纸</button></div><div id="groupEmojiGrid" class="group-emoji-grid"></div></div><div class="group-composer-row"><button class="cc-icon-btn" id="groupPlusBtn"><i class="fa-solid fa-circle-plus"></i></button><textarea id="groupInput" rows="1" placeholder="说点什么…"></textarea><button class="cc-icon-btn" id="groupSpeakBtn" title="让对方发信息"><i class="fa-solid fa-comment-dots"></i></button><button class="cc-icon-btn" id="groupEmojiBtn"><i class="fa-solid fa-face-smile"></i></button><button class="cc-send-btn" id="groupSendBtn"><i class="fa-solid fa-paper-plane"></i></button></div></div>`;groupRenderMessages(g);groupRenderEmoji();
   const toggle=(id)=>{const el=document.getElementById(id);el.classList.toggle('show');return el.classList.contains('show')};document.getElementById('groupPlusBtn').onclick=()=>{document.getElementById('groupEmojiPanel').classList.remove('show');toggle('groupPlusPanel')};document.getElementById('groupEmojiBtn').onclick=()=>{document.getElementById('groupPlusPanel').classList.remove('show');toggle('groupEmojiPanel');groupRenderEmoji()};document.getElementById('groupSpeakBtn').onclick=()=>groupMembersSpeak(g);const groupInputEl=document.getElementById('groupInput');
   const groupSendBtnEl=document.getElementById('groupSendBtn');
   const updateGroupSendBtn=()=>{
@@ -5357,6 +5662,76 @@ function renderAll(){
   if (activeTab==='profile') renderProfileTab();
   if (activeTab==='settings') renderSettings();
 }
+function checkBackupReminder(){
+  try {
+    const last = parseInt(localStorage.getItem('lastBackupAt') || '0', 10);
+    const now = Date.now();
+    const days = 7 * 24 * 60 * 60 * 1000;
+    const snooze = parseInt(localStorage.getItem('backupSnoozeUntil') || '0', 10);
+    if (now < snooze) return;
+    if (last && now - last < days) return;
+    openSheet(`
+      <h2>该备份数据了</h2>
+      <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.7;">
+        你的聊天记录、角色、信件都保存在这台设备上，没有云端。<br>
+        浏览器一旦清理存储、卸载或换设备，数据就找不回来了。<br><br>
+        建议现在就导出一次备份文件，保存在自己的网盘或本地。
+      </p>
+      <div class="sheet-btn-row">
+        <button id="backupLaterBtn">7 天后再提醒</button>
+        <button class="primary" id="backupNowBtn"><i class="fa-solid fa-file-export"></i> 立即备份</button>
+      </div>
+    `, ()=>{
+      document.getElementById('backupNowBtn').onclick = ()=>{
+        closeSheet();
+        const idx = state.characters.findIndex(c=>c.id===state.activeCharacterId);
+        if (idx>-1) state.characters[idx] = activeCharacterSnapshot();
+        downloadJSON({cards:state.cards, stickers:state.stickers, kaomoji:state.kaomoji, pokes:state.pokes, imageLibrary:state.imageLibrary, groupChats:state.groupChats, groupMessages:state.groupMessages, playlist:state.playlist, music:state.music, characters:state.characters, activeCharacterId:state.activeCharacterId, settings:state.settings}, 'chuanxun-backup.json');
+        localStorage.setItem('lastBackupAt', String(Date.now()));
+        toast('备份已导出', 'fa-file-export');
+      };
+      document.getElementById('backupLaterBtn').onclick = ()=>{
+        localStorage.setItem('backupSnoozeUntil', String(Date.now() + days));
+        closeSheet();
+      };
+    });
+  } catch(e){ console.warn('backup reminder error', e); }
+}
+function checkBackupReminder(){
+  try {
+    const last = parseInt(localStorage.getItem('lastBackupAt') || '0', 10);
+    const now = Date.now();
+    const days = 7 * 24 * 60 * 60 * 1000;
+    const snooze = parseInt(localStorage.getItem('backupSnoozeUntil') || '0', 10);
+    if (now < snooze) return;
+    if (last && now - last < days) return;
+    openSheet(`
+      <h2>该备份数据了</h2>
+      <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.7;">
+        你的聊天记录、角色、信件都保存在这台设备上，没有云端。<br>
+        浏览器一旦清理存储、卸载或换设备，数据就找不回来了。<br><br>
+        建议现在就导出一次备份文件，保存在自己的网盘或本地。
+      </p>
+      <div class="sheet-btn-row">
+        <button id="backupLaterBtn">7 天后再提醒</button>
+        <button class="primary" id="backupNowBtn"><i class="fa-solid fa-file-export"></i> 立即备份</button>
+      </div>
+    `, ()=>{
+      document.getElementById('backupNowBtn').onclick = ()=>{
+        closeSheet();
+        const idx = state.characters.findIndex(c=>c.id===state.activeCharacterId);
+        if (idx>-1) state.characters[idx] = activeCharacterSnapshot();
+        downloadJSON({cards:state.cards, stickers:state.stickers, kaomoji:state.kaomoji, pokes:state.pokes, imageLibrary:state.imageLibrary, groupChats:state.groupChats, groupMessages:state.groupMessages, playlist:state.playlist, music:state.music, characters:state.characters, activeCharacterId:state.activeCharacterId, settings:state.settings}, 'chuanxun-backup.json');
+        localStorage.setItem('lastBackupAt', String(Date.now()));
+        toast('备份已导出', 'fa-file-export');
+      };
+      document.getElementById('backupLaterBtn').onclick = ()=>{
+        localStorage.setItem('backupSnoozeUntil', String(Date.now() + days));
+        closeSheet();
+      };
+    });
+  } catch(e){ console.warn('backup reminder error', e); }
+}
 async function init(){
   await loadAll();
   state.settings.groupMaxConcat = state.settings.groupMaxConcat ?? 3;
@@ -5374,6 +5749,10 @@ async function init(){
   setupAutoPost();
   initMusic();
   if (!state.settings.onboarded) startOnboarding();
+  setTimeout(()=>{
+    if (!state.settings.onboarded) return;
+    checkBackupReminder();
+  }, 5000);
 }
 (function runFatesSplash(){
   const splash = document.getElementById('splash-fates');
@@ -5681,7 +6060,7 @@ function openScreenshotConfig() {
   });
 }
 
-function makeBlurredBg(dataUrl){
+function makeBlurredBg_v2_unused(dataUrl){
   return new Promise(resolve=>{
     try{
       const img = new Image();
@@ -6089,6 +6468,81 @@ window.openMusicNeteaseSheet = function(){
 /* 这两个函数直接返回空，避免任何网络请求卡住 */
 async function fetchNeteaseLyrics(id){ return ''; }
 async function fetchNeteaseMeta(id){ return {}; }
+/* ===== 背景图补丁 v3：直接同步到聊天消息层，避免仅改 CSS 变量但实际消息区不刷新 ===== */
+function applyChatBackground(){
+  try {
+    const settings = (typeof state !== 'undefined' && state.settings) || {};
+    const raw = settings.chatBg || '';
+    const bg = raw && typeof _toBlobUrl === 'function' ? (_toBlobUrl(raw) || raw) : raw;
+    const op = (()=>{
+  const n = Number(settings.chatBgOpacity);
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(0.05, Math.min(1, n));
+})();
+    const cssBg = bg ? 'url("' + String(bg).replace(/"/g, '\\"') + '")' : 'none';
+    document.documentElement.style.setProperty('--chat-bg-url', cssBg);
+    document.documentElement.style.setProperty('--chat-bg-opacity', String(op));
+    // 真正把图片放到消息容器本身；伪元素只负责“磨砂/变淡”遮罩。
+    // 这样不会再出现“预览换了、聊天区却还是旧背景”的情况。
+    document.documentElement.style.setProperty('--chat-bg-overlay-opacity', String(1 - op));
+    document.querySelectorAll('.chat-messages, .group-messages').forEach(el=>{
+      el.style.setProperty('--chat-bg-url', cssBg);
+      el.style.setProperty('--chat-bg-opacity', String(op));
+      el.style.setProperty('--chat-bg-overlay-opacity', String(1 - op));
+      el.style.backgroundImage = bg ? cssBg : 'none';
+      el.style.backgroundSize='cover';
+      el.style.backgroundPosition='center';
+      el.style.backgroundRepeat='no-repeat';
+      el.style.backgroundColor='var(--shell-bg)';
+    });
+  } catch(e){ console.warn('applyChatBackground error',e); }
+}
+
+/* ===== 背景图补丁 v2：原 v2 覆盖 v1 会导致字号/自定义字体失效，已停用 ===== */
+function applyThemeV2_unused(){
+  try {
+    const s = (typeof state !== 'undefined' && state.settings) || {};
+    const fs = s.fontSize || 15;
+    const styleTag = document.getElementById('fontSizeStyle');
+    if (styleTag) {
+      styleTag.textContent =
+        '.chat-bubble, .bubble { font-size: '+fs+'px !important; }' +
+        '.chat-composer textarea, .group-composer-row textarea { font-size: '+fs+'px !important; }' +
+        '.topbar h1 { font-size: '+(fs+2)+'px !important; }' +
+        '.topbar .tb-sub { font-size: '+Math.max(10,fs-4)+'px !important; }' +
+        '.group-head-title b { font-size: '+fs+'px !important; }' +
+        '.group-sender { font-size: '+Math.max(10,fs-4)+'px !important; }' +
+        '.chat-row .cr-meta { font-size: '+Math.max(10,fs-4)+'px !important; }' +
+        '.post .ptext { font-size: '+(fs+0.5)+'px !important; }' +
+        '.post .who { font-size: '+(fs-0.5)+'px !important; }' +
+        '.letter-body { font-size: '+fs+'px !important; }' +
+        '.setting-row .label { font-size: '+(fs-0.5)+'px !important; }' +
+        '.setting-row .label small { font-size: '+Math.max(10,fs-3)+'px !important; }' +
+        '.setting-row input, .setting-row textarea, .sheet-input { font-size: '+(fs-1)+'px !important; }' +
+        '.setting-row .mini { font-size: '+(fs-2)+'px !important; }' +
+        '.setting-row .unit, .setting-row .val { font-size: '+Math.max(10,fs-2)+'px !important; }';
+    }
+    const op = (s.chatBgOpacity != null ? s.chatBgOpacity : 1);
+    const url = s.chatBg ? 'url("' + s.chatBg + '")' : 'none';
+    document.documentElement.style.setProperty('--chat-bg-url', url);
+    document.documentElement.style.setProperty('--chat-bg-opacity', op);
+    applyChatBackground();
+    const nk = document.getElementById('dynamicIsland');
+    if (nk) nk.style.display = s.dynamicIsland ? 'block' : 'none';
+    const bubbleStyle = document.getElementById('dynamicBubbleStyle');
+    if (bubbleStyle) {
+      if (s.bubbleStyleType === 'preset') {
+        bubbleStyle.textContent = (typeof BUBBLE_PRESETS !== 'undefined' && BUBBLE_PRESETS[s.bubblePresetIndex]) ? BUBBLE_PRESETS[s.bubblePresetIndex].css : '';
+      } else {
+        bubbleStyle.textContent = s.bubbleCustomCSS || '';
+      }
+    }
+  } catch(e){ console.warn('applyTheme v2 error', e); }
+}
+/* 页面加载后主动跑一遍 */
+setTimeout(function(){ try{ applyTheme(); applyChatBackground(); }catch(e){} }, 300);
+setTimeout(function(){ try{ applyTheme(); applyChatBackground(); }catch(e){} }, 800);
+setTimeout(function(){ try{ applyTheme(); applyChatBackground(); }catch(e){} }, 2500);
 </script>
 
 </body>
