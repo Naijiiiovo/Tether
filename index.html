@@ -1125,6 +1125,18 @@ input, textarea {
 }
 </style>
 
+<style id="chatBgLayerStyle">
+.chat-messages, .group-messages { background-image: none !important; position: relative; }
+.chat-messages::before, .group-messages::before {
+  content:''; position:absolute; inset:0;
+  background-image: var(--chat-bg-url, none);
+  background-size: cover; background-position: center;
+  opacity: var(--chat-bg-opacity, 1);
+  pointer-events:none; z-index:0;
+  transition: opacity .15s ease;
+}
+.chat-messages > *, .group-messages > * { position: relative; z-index: 1; }
+</style>
 </head>
 <body>
 
@@ -1527,6 +1539,7 @@ const BUBBLE_PRESETS = [
 const DEFAULT_SETTINGS = {
   fontSize: 15,
   chatBg: '',
+chatBgOpacity: 1,
   bubbleStyleType: 'preset', // 'preset' or 'custom'
   bubblePresetIndex: 0,
   bubbleCustomCSS: `.chat-bubble.sent {\n  background: #007aff;\n  color: #ffffff;\n}\n.chat-bubble.recv {\n  background: #e9e9eb;\n  color: #1c1c1e;\n}`,
@@ -1773,7 +1786,14 @@ styleTag.textContent = `
   .music-section-note { font-size: ${Math.max(10,fs-4)}px !important; }
 `;
   const cm = document.getElementById('chatMessages');
-  if (cm) cm.style.backgroundImage = state.settings.chatBg ? `url("${state.settings.chatBg}")` : 'none';
+const bgOpacity = (state.settings.chatBgOpacity ?? 1);
+const bgUrl = state.settings.chatBg ? `url("${_toBlobUrl(state.settings.chatBg)}")` : 'none';
+['chatMessages','groupMessages'].forEach(id=>{
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.setProperty('--chat-bg-url', bgUrl);
+  el.style.setProperty('--chat-bg-opacity', bgOpacity);
+});
   const gm = document.getElementById('groupMessages');
   if (gm) gm.style.backgroundImage = state.settings.chatBg ? `url("${state.settings.chatBg}")` : 'none';
   const notch = document.getElementById('dynamicIsland');
@@ -3597,13 +3617,30 @@ function renderSettings(){
       </div>
       <div class="setting-row"><div class="label">我的名字</div><input type="text" id="setMyName" value="${state.me.name}"></div>
       <div class="setting-row"><div class="label">对方名字</div><input type="text" id="setPartnerName" value="${state.partner.name}"></div>
-      <div class="setting-row">
-        <div class="label">聊天背景图</div>
-        <div style="display:flex;gap:6px;">
-          <button class="mini" id="setChatBg"><i class="fa-solid fa-image"></i> 选择</button>
-          <button class="mini danger" id="clearChatBg"><i class="fa-solid fa-trash"></i> 恢复默认</button>
-        </div>
+<div class="setting-row">
+  <div class="label">聊天背景图</div>
+  <div style="display:flex;gap:6px;">
+    <button class="mini" id="setChatBg"><i class="fa-solid fa-image"></i> 选择</button>
+    <button class="mini danger" id="clearChatBg"><i class="fa-solid fa-trash"></i> 恢复默认</button>
+  </div>
+</div>
+<div class="setting-row"><div class="label">背景不透明度<small>越低越像磨砂纸</small></div><input type="range" min="0.05" max="1" step="0.05" id="setChatBgOpacity" value="${s.chatBgOpacity ?? 1}"><span class="val" id="setChatBgOpacityVal">${Math.round((s.chatBgOpacity ?? 1)*100)}%</span></div>
+<div class="setting-row" style="flex-direction:column;align-items:stretch;gap:8px;">
+  <div class="label">预览</div>
+  <div id="chatBgPreview" style="position:relative;height:130px;border-radius:14px;overflow:hidden;background:var(--shell-bg);border:1px solid var(--hair);">
+<div id="chatBgPreviewLayer" style="position:absolute;inset:0;background-image:${s.chatBg ? `url("${s.chatBg}")` : 'none'};background-size:cover;background-position:center;opacity:${s.chatBgOpacity ?? 1};transition:opacity .15s ease;"></div>
+    <div style="position:relative;z-index:1;padding:12px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;gap:6px;align-items:flex-start;">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--accent-soft);flex:none;"></div>
+        <div style="background:#e9e9eb;color:#1c1c1e;border-radius:4px 14px 14px 14px;padding:6px 10px;font-size:12px;max-width:72%;">早上好呀</div>
       </div>
+      <div style="display:flex;gap:6px;align-items:flex-start;flex-direction:row-reverse;">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--accent-soft);flex:none;"></div>
+        <div style="background:#007aff;color:#fff;border-radius:14px 4px 14px 14px;padding:6px 10px;font-size:12px;max-width:72%;">新的一天也要开心</div>
+      </div>
+    </div>
+  </div>
+</div>
       
       <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -4064,8 +4101,20 @@ function bindSettingsEvents(){
   document.getElementById('setPartnerName').addEventListener('change', async e=>{ state.partner.name=e.target.value; await saveAll(); renderProfileTab(); renderChat(); });
   document.getElementById('setMyAvatar').addEventListener('click', ()=> pickImage(async url=>{ state.me.avatar=url; await saveAll(); renderSettings(); renderChat(); }));
   document.getElementById('setPartnerAvatar').addEventListener('click', ()=> pickImage(async url=>{ state.partner.avatar=url; await saveAll(); renderSettings(); renderChat(); }));
-  document.getElementById('setChatBg').addEventListener('click', ()=> pickImage(async url=>{ s.chatBg=url; await saveAll(); applyTheme(); toast('背景已更新'); }));
-  document.getElementById('clearChatBg').addEventListener('click', async ()=>{ s.chatBg=''; await saveAll(); applyTheme(); toast('已恢复默认背景'); });
+  document.getElementById('setChatBg').addEventListener('click', ()=> pickImage(async url=>{ s.chatBg=url; await saveAll(); applyTheme(); renderSettings(); toast('背景已更新'); }));
+  document.getElementById('clearChatBg').addEventListener('click', async ()=>{ s.chatBg=''; await saveAll(); applyTheme(); renderSettings(); toast('已恢复默认背景'); });
+const chatBgOp = document.getElementById('setChatBgOpacity');
+if (chatBgOp){
+  chatBgOp.addEventListener('input', e=>{
+    s.chatBgOpacity = +e.target.value;
+    const v = document.getElementById('setChatBgOpacityVal');
+    if (v) v.textContent = Math.round(s.chatBgOpacity*100)+'%';
+    const layer = document.getElementById('chatBgPreviewLayer');
+    if (layer) layer.style.opacity = s.chatBgOpacity;
+    applyTheme();
+  });
+  chatBgOp.addEventListener('change', ()=> saveAll());
+}
 
   // 气泡样式管理
   document.getElementById('btnBubblePreset').addEventListener('click', async ()=>{
@@ -5633,6 +5682,44 @@ function openScreenshotConfig() {
   });
 }
 
+function makeBlurredBg(dataUrl){
+  return new Promise(resolve=>{
+    try{
+      const img = new Image();
+      img.onload = ()=>{
+        try{
+          const W = 60;
+          const H = Math.max(1, Math.round(W * (img.height / img.width)));
+          const c = document.createElement('canvas');
+          c.width = W; c.height = H;
+          c.getContext('2d').drawImage(img, 0, 0, W, H);
+          resolve(c.toDataURL('image/jpeg', 0.5));
+        }catch(e){ resolve(dataUrl); }
+      };
+      img.onerror = ()=>resolve(dataUrl);
+      img.src = dataUrl;
+    }catch(e){ resolve(dataUrl); }
+  });
+}
+function makeBlurredBg(dataUrl){
+  return new Promise(resolve=>{
+    try{
+      const img = new Image();
+      img.onload = ()=>{
+        try{
+          const W = 60;
+          const H = Math.max(1, Math.round(W * (img.height / img.width)));
+          const c = document.createElement('canvas');
+          c.width = W; c.height = H;
+          c.getContext('2d').drawImage(img, 0, 0, W, H);
+          resolve(c.toDataURL('image/jpeg', 0.5));
+        }catch(e){ resolve(dataUrl); }
+      };
+      img.onerror = ()=>resolve(dataUrl);
+      img.src = dataUrl;
+    }catch(e){ resolve(dataUrl); }
+  });
+}
 async function generateScreenshot(options) {
   if (typeof html2canvas === 'undefined') throw new Error('html2canvas 未加载');
   const ids = [...multiSelectSet];
@@ -5654,13 +5741,14 @@ async function generateScreenshot(options) {
     font-family:${getComputedStyle(document.documentElement).getPropertyValue('--font-body') || 'sans-serif'};
     box-sizing:border-box;
   `;
-  if (state.settings.chatBg) {
-    const bgUrl = _toBlobUrl(state.settings.chatBg);
-    container.style.backgroundImage = `url("${bgUrl}")`;
-    container.style.backgroundSize = 'cover';
-    container.style.backgroundPosition = 'center';
-  }
-  let html = `<div style="text-align:center;font-size:11px;color:${options.style==='dark'?'#888':'#999'};margin-bottom:16px;letter-spacing:2px;opacity:.7;">TETHER · 聊天记录</div>`;
+container.style.overflow = 'hidden';
+if (state.settings.chatBg) {
+  const op = (state.settings.chatBgOpacity ?? 1);
+  const bgLayer = document.createElement('div');
+  bgLayer.style.cssText = 'position:absolute;inset:0;background-image:url("' + state.settings.chatBg + '");background-size:cover;background-position:center;opacity:' + op + ';';
+  container.appendChild(bgLayer);
+}
+let html = `<div style="position:relative;z-index:1;"><div style="text-align:center;font-size:11px;color:${options.style==='dark'?'#888':'#999'};margin-bottom:16px;letter-spacing:2px;opacity:.7;">TETHER · 聊天记录</div>`;
   const meAvatar = options.hideAvatar ? '' : (avatarOf('me') || AVATAR_PLACEHOLDER);
   const partnerAvatar = options.hideAvatar ? '' : (avatarOf('partner') || AVATAR_PLACEHOLDER);
 
@@ -5683,7 +5771,7 @@ async function generateScreenshot(options) {
     } else {
       const parts = [];
       if (m.image) parts.push(`<img src="${_toBlobUrl(m.image)}" style="max-width:200px;border-radius:12px;display:block;">`);
-      if (m.video) parts.push(`<video src="${_toBlobUrl(m.video)}" style="max-width:200px;border-radius:12px;display:block;" muted></video>`);
+      if (m.video) parts.push(`<div style="max-width:200px;padding:20px 14px;border-radius:12px;background:#e9e9eb;color:#666;font-size:12px;text-align:center;">[视频]</div>`);
       if (m.sticker) parts.push(`<img src="${_toBlobUrl(m.sticker)}" style="max-width:100px;border-radius:10px;display:block;">`);
       if (m.text) parts.push(`<div class="chat-bubble ${isMe?'sent':'recv'}">${escapeHTML(m.text)}</div>`);
       inner = parts.join('');
@@ -5700,6 +5788,7 @@ async function generateScreenshot(options) {
     html += `<div style="display:flex;gap:8px;margin:8px 0;${rowStyle}">${avatarHtml}<div style="display:flex;flex-direction:column;max-width:75%;${colAlign}">${nameHtml}${inner}${meta}</div></div>`;
   });
   if (options.watermark) html += `<div style="text-align:center;font-size:11px;color:#999;opacity:.55;margin-top:20px;letter-spacing:1px;">${escapeHTML(options.watermark)}</div>`;
+html += '</div>';
 
   const bubbleStyleText = document.getElementById('dynamicBubbleStyle')?.textContent || '';
   const fontSize = state.settings.fontSize || 15;
@@ -5712,7 +5801,7 @@ async function generateScreenshot(options) {
   container.insertAdjacentHTML('beforeend', html);
   document.body.appendChild(container);
   try {
-    const canvas = await html2canvas(container, { backgroundColor: null, scale: 2, useCORS: true, allowTaint: true, logging: false });
+    const canvas = await html2canvas(container, { backgroundColor: null, scale: 1.5, useCORS: true, allowTaint: false, logging: false });
     const fmt = (state.settings.screenshotFormat || 'PNG') === 'JPEG' ? 'image/jpeg' : 'image/png';
     return canvas.toDataURL(fmt, state.settings.screenshotQuality || 0.92);
   } finally { container.remove(); }
@@ -5721,10 +5810,11 @@ async function generateScreenshot(options) {
 function showScreenshotPreview(dataUrl) {
   const el = document.createElement('div');
   el.className = 'screenshot-preview-mask';
-  el.innerHTML = `<div class="screenshot-preview-inner"><div class="screenshot-preview-scroll"><img src="${dataUrl}"></div><div class="screenshot-preview-actions"><button id="ssRegen"><i class="fa-solid fa-rotate"></i> 重新生成</button><button id="ssShare"><i class="fa-solid fa-share-nodes"></i> 分享</button><button class="primary" id="ssSave"><i class="fa-solid fa-download"></i> 保存</button></div></div>`;
+  el.innerHTML = `<div class="screenshot-preview-inner" style="position:relative;"><button id="ssClose" style="position:absolute;top:6px;right:6px;z-index:3;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-xmark"></i></button><div class="screenshot-preview-scroll"><img src="${dataUrl}"></div><div class="screenshot-preview-actions"><button id="ssRegen"><i class="fa-solid fa-rotate"></i> 重新生成</button><button id="ssShare"><i class="fa-solid fa-share-nodes"></i> 分享</button><button class="primary" id="ssSave"><i class="fa-solid fa-download"></i> 保存</button></div></div>`;
   document.getElementById('phone').appendChild(el);
   requestAnimationFrame(() => el.classList.add('show'));
   const dismiss = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); };
+el.querySelector('#ssClose').onclick = dismiss;
   el.querySelector('#ssSave').onclick = () => {
     const a = document.createElement('a');
     const ext = (state.settings.screenshotFormat || 'PNG') === 'JPEG' ? 'jpg' : 'png';
