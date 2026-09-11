@@ -370,20 +370,163 @@ i { display: inline-flex; align-items: center; justify-content: center; }
 .call-pill img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
 .call-pill .cp-btn { background: #ff3b30; border: none; color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; }
 
-/* 新手引导 */
-.onboard-mask { position: absolute; inset: 0; background: #0d0f1a; z-index: 400; color: #fff; display: flex; flex-direction: column; padding: 48px 30px; overflow-y: auto; }
-.onboard-mask .ob-icon { width: 60px; height: 60px; border-radius: 18px; background: var(--accent); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; flex: none; font-size: 28px; }
-.onboard-mask h2 { font-family: var(--font-display); font-size: 22px; margin: 0 0 14px; }
-.onboard-mask p { font-size: 15px; line-height: 1.75; opacity: .85; margin: 0; white-space: pre-line; }
-.onboard-mask .ob-nav { margin-top: 30px; display: flex; align-items: center; justify-content: space-between; flex: none; }
-.onboard-mask .dots { display: flex; gap: 8px; flex-wrap: wrap; max-width: 140px; }
-.onboard-mask .dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.25); }
-.onboard-mask .dots span.on { background: #fff; width: 20px; border-radius: 4px; }
-.onboard-mask .ob-btns { display: flex; gap: 12px; }
-.onboard-mask button { border: none; border-radius: 16px; padding: 10px 20px; font-size: 14px; cursor: pointer; font-weight: 700; }
-.onboard-mask .skip { background: none; color: rgba(255,255,255,0.6); }
-.onboard-mask .next { background: #fff; color: #0d0f1a; }
+/* 新手引导：真·聚光灯 + 居中卡片 */
+.onboard-mask{
+  position:absolute; inset:0;
+  background: transparent;
+  z-index: 900;
+  display:none;
+  pointer-events: none;
+  color: #fff;
+  -webkit-tap-highlight-color: transparent;
+}
+.onboard-mask.show{ display:block; }
 
+/* 没有目标 / 正在切换视图时，先铺一块实心黑，避免页面亮一下 */
+.onboard-mask.no-target{
+  background: rgba(8,10,18,.92);
+  pointer-events: auto;
+}
+
+/* 洞口：自己透明，靠巨大的 box-shadow 把周围变暗 */
+.ob-spot{
+  position:absolute;
+  border-radius: 16px;
+  border: 3px solid #3d5cff;
+  box-shadow: 0 0 0 9999px rgba(8,10,18,.82), 0 0 20px 4px rgba(61,92,255,.6);
+  pointer-events:none;
+  opacity: 0;
+  z-index: 901;
+  transition: opacity .28s ease;
+}
+.ob-spot.on{ opacity: 1; }
+@keyframes obSpotPulse{
+  0%,100%{ box-shadow: 0 0 0 9999px rgba(8,10,18,.82), 0 0 24px 4px rgba(61,92,255,.55); }
+  50%    { box-shadow: 0 0 0 9999px rgba(8,10,18,.82), 0 0 36px 10px rgba(61,92,255,.85); }
+}
+
+/* 居中卡片 */
+.ob-card{
+  position:absolute;
+  left:50%; top:50%;
+  transform:translate(-50%,-50%) scale(.94);
+  width: min(360px, calc(100vw - 40px));
+  max-height: 82vh;
+  overflow-y: auto;
+  background: #fff;
+  color: #1c1c1e;
+  border-radius: 22px;
+  padding: 24px 20px 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  z-index: 903;
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity .25s, transform .3s cubic-bezier(.2,.8,.2,1);
+  text-align: left;
+}
+.onboard-mask.show .ob-card{
+  opacity: 1;
+  transform:translate(-50%,-50%) scale(1);
+}
+
+/* 圈在上半屏时，卡片贴下面 */
+.onboard-mask.card-bottom .ob-card{
+  top: auto;
+  bottom: 20px;
+  transform: translate(-50%, 0) scale(.94);
+  max-height: calc(52vh - 20px);
+}
+.onboard-mask.show.card-bottom .ob-card{
+  transform: translate(-50%, 0) scale(1);
+}
+
+/* 圈在下半屏时，卡片贴上面 */
+.onboard-mask.card-top .ob-card{
+  top: 20px;
+  bottom: auto;
+  transform: translate(-50%, 0) scale(.94);
+  max-height: calc(52vh - 20px);
+}
+.onboard-mask.show.card-top .ob-card{
+  transform: translate(-50%, 0) scale(1);
+}
+
+.ob-card .ob-icon{
+  width: 52px; height: 52px;
+  border-radius: 16px;
+  background: var(--accent-soft, #e8ecff);
+  color: var(--accent, #3d5cff);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  margin-bottom: 14px;
+}
+.ob-card h2{
+  font-family: var(--font-display, sans-serif);
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 0 12px;
+  color: #1c1c1e;
+}
+.ob-card p{
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: #4b4f58;
+  margin: 0;
+  white-space: pre-line;
+}
+.ob-card .ob-nav{
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ob-card .dots{
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: 150px;
+  align-items: center;
+}
+.ob-card .dots span{
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #d0d3db;
+  transition: all .25s;
+}
+.ob-card .dots span.on{
+  background: var(--accent, #3d5cff);
+  width: 18px;
+  border-radius: 3px;
+}
+.ob-card .ob-btns{
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.ob-card button{
+  border: none;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ob-card .skip{
+  background: transparent;
+  color: #8a8f98;
+  padding: 10px 8px;
+}
+.ob-card .next{
+  background: var(--accent, #3d5cff);
+  color: #fff;
+}
+@media (max-height: 620px){
+  .ob-card{ top: 46%; }
+  .onboard-mask.card-bottom .ob-card{ bottom: 14px; }
+  .onboard-mask.card-top .ob-card{ top: 14px; }
+}
 /* 图片查看器 */
 .img-viewer { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 350; display: none; align-items: center; justify-content: center; }
 .img-viewer.show { display: flex; }
@@ -1120,6 +1263,7 @@ input, textarea {
       <div class="pf-switch" id="pfSwitch">
         <button data-who="me">我的主页</button>
         <button data-who="partner">对方主页</button>
+        <button data-who="all">全部</button>
       </div>
       <div id="pfContent"></div>
       <button class="pf-fab" id="pfFab"><i class="fa-solid fa-plus"></i></button>
@@ -1187,6 +1331,165 @@ input, textarea {
    内置数据
    ============================================================================ */
 // 移除了 "愿愿"
+
+/* ============================================================================
+   诊断日志系统（不收集任何用户隐私内容，只记录错误 + 环境 + 数量）
+   ============================================================================ */
+(function(){
+  const diag = {
+    logs: [],
+    maxLogs: 300,
+    startedAt: Date.now(),
+    storageInfo: '',
+    push(type, msg){
+      try {
+        this.logs.push({ t: Date.now(), type, msg: String(msg).slice(0, 800) });
+        if (this.logs.length > this.maxLogs) this.logs.shift();
+      } catch(e){}
+    }
+  };
+  window.__diag = diag;
+
+  window.addEventListener('error', function(e){
+    diag.push('error', (e.message || 'unknown') + ' @ ' + (e.filename || '') + ':' + (e.lineno || 0) + ':' + (e.colno || 0));
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    const r = e.reason;
+    diag.push('promise', (r && (r.stack || r.message)) || String(r));
+  });
+  const _warn = console.warn, _err = console.error;
+  console.warn = function(){ try{ diag.push('warn', Array.from(arguments).join(' ')); }catch(e){} return _warn.apply(console, arguments); };
+  console.error = function(){ try{ diag.push('console.error', Array.from(arguments).join(' ')); }catch(e){} return _err.apply(console, arguments); };
+
+  function fmtSize(n){
+    if (!n || n < 1024) return (n||0) + ' B';
+    if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+    return (n/1024/1024).toFixed(2) + ' MB';
+  }
+
+  function buildReport(){
+    const L = [];
+    const pad = n => String(n).padStart(2,'0');
+    const now = new Date();
+    L.push('Tether 诊断日志');
+    L.push('生成时间：' + now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()));
+    L.push('');
+
+    L.push('【环境信息】');
+    L.push('UA：' + navigator.userAgent);
+    L.push('平台：' + (navigator.platform || 'unknown'));
+    L.push('语言：' + (navigator.language || 'unknown'));
+    L.push('屏幕：' + screen.width + '×' + screen.height + ' (视口 ' + innerWidth + '×' + innerHeight + ')');
+    L.push('DPR：' + (window.devicePixelRatio || 1));
+    L.push('独立窗口：' + (window.matchMedia('(display-mode: standalone)').matches ? '是' : '否'));
+    L.push('页面运行：' + Math.round((Date.now() - diag.startedAt) / 1000) + ' 秒');
+    L.push('');
+
+    L.push('【功能开关状态】');
+    try {
+      const s = (typeof state !== 'undefined' && state.settings) || {};
+      const keys = ['fontSize','concatEnabled','maxConcat','readNoReply','noReplyChance','multiMsgEnabled','multiMsgMin','multiMsgMax','groupMaxConcat','groupNoReplyChance','groupMinDelay','groupMaxDelay','proactiveEnabled','letterProactiveEnabled','avatarSwapEnabled','autoPostEnabled','keepAlive','desktopNotify','dynamicIsland','onboarded','musicSoloPauseChance','musicTogetherPauseChance','musicActiveInviteChance','musicCheckMin','musicCheckMax','callInChance','callAcceptChance','multiSelectEnabled','multiSelectLongPressMs','screenshotFormat','screenshotQuality'];
+      keys.forEach(k => { if (s[k] !== undefined) L.push('  ' + k + ' = ' + s[k]); });
+    } catch(e){ L.push('  (读取设置失败：' + e.message + ')'); }
+    L.push('');
+
+    L.push('【数据规模（仅数量）】');
+    try {
+      const st = (typeof state !== 'undefined' && state) || {};
+      const n = a => Array.isArray(a) ? a.length : 0;
+      L.push('  角色数：' + n(st.characters));
+      L.push('  当前角色消息数：' + n(st.messages));
+      L.push('  当前角色动态数：' + n(st.posts));
+      L.push('  当前角色信件数：' + n(st.letters));
+      L.push('  字卡数：' + n(st.cards));
+      L.push('  贴纸数：' + n(st.stickers));
+      L.push('  颜文字数：' + n(st.kaomoji));
+      L.push('  拍一拍数：' + n(st.pokes));
+      L.push('  图片库数：' + n(st.imageLibrary));
+      L.push('  群聊数：' + n(st.groupChats));
+      L.push('  群消息数：' + n(st.groupMessages));
+      L.push('  歌单数：' + n(st.playlist));
+      L.push('  用户预设数：' + n(st.userPresets));
+    } catch(e){ L.push('  (读取数据规模失败：' + e.message + ')'); }
+    L.push('');
+
+    if (diag.storageInfo){
+      L.push('【存储占用】');
+      L.push('  ' + diag.storageInfo);
+      L.push('');
+    }
+
+    L.push('【最近错误 / 警告（共 ' + diag.logs.length + ' 条，最新在最后）】');
+    if (!diag.logs.length){
+      L.push('  （没有记录到任何错误）');
+    } else {
+      diag.logs.forEach(function(l){
+        const d = new Date(l.t);
+        L.push('  [' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '] [' + l.type + '] ' + l.msg);
+      });
+    }
+    L.push('');
+    L.push('—— 本文件不包含任何聊天内容、名字、头像、图片或账号信息。');
+    return L.join('\n');
+  }
+
+  function esc(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  window.exportDiagnosticReport = function(){
+    try {
+      const updateStorage = navigator.storage && navigator.storage.estimate
+        ? navigator.storage.estimate().then(function(est){ diag.storageInfo = '用量 ' + fmtSize(est.usage) + ' / 配额 ' + fmtSize(est.quota); }).catch(function(){})
+        : Promise.resolve();
+      updateStorage.then(function(){
+        const text = buildReport();
+        const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Tether诊断</title></head><body style="font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;padding:20px;">' + esc(text) + '</body></html>';
+        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const t = new Date(), p = n => String(n).padStart(2,'0');
+        a.href = url;
+        a.download = 'Tether诊断_' + t.getFullYear() + p(t.getMonth()+1) + p(t.getDate()) + '_' + p(t.getHours()) + p(t.getMinutes()) + '.doc';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+        if (typeof toast === 'function') toast('诊断日志已导出，请发给开发者','fa-file-medical');
+      });
+    } catch(e){
+      if (typeof toast === 'function') toast('导出失败：' + e.message,'fa-triangle-exclamation');
+    }
+  };
+
+  function tryInjectButton(){
+    const view = document.getElementById('view-settings');
+    if (!view || view.querySelector('#exportDiagBtn')) return;
+    let dataGroup = null;
+    view.querySelectorAll('.settings-group').forEach(function(g){
+      const h = g.querySelector('h3');
+      if (h && h.textContent.includes('数据管理')) dataGroup = g;
+    });
+    if (!dataGroup) return;
+    const row = document.createElement('div');
+    row.className = 'setting-row';
+    row.innerHTML = '<div class="label">导出诊断日志<small>出问题时发给开发者，不含聊天内容</small></div><button class="mini primary" id="exportDiagBtn"><i class="fa-solid fa-file-medical"></i> 导出</button>';
+    dataGroup.appendChild(row);
+    row.querySelector('#exportDiagBtn').addEventListener('click', window.exportDiagnosticReport);
+  }
+
+  function hookObserver(){
+    const v = document.getElementById('view-settings');
+    if (v) new MutationObserver(tryInjectButton).observe(v, { childList: true, subtree: true });
+    tryInjectButton();
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', hookObserver);
+  } else {
+    hookObserver();
+  }
+})();
+/* ===== 诊断日志系统结束 ===== */
+
+
 const UPLOADED_CARDS = ["麻烦", "这样", "做吗", "咱们", "怎么", "这么", "只是", "只", "在", "再", "这", "找", "梦", "走", "宠物", "出去", "又", "也", "有没有", "没有嘛", "没有", "被他", "被我", "被", "发现", "被你", "同样", "立刻", "不明白", "明明", "想想", "拜拜", "偏偏", "虽然", "而且", "钱", "看", "去", "～", "！", "！！", "？", "？？", "嘛", "吗", "了", "不累", "变了", "不冷", "不了", "本来", "不来", "来", "不吃", "吃", "拉面", "冷漠", "浪漫", "礼貌", "立马", "里面", "哪", "那里", "哪里", "结婚", "她们", "你们", "我们", "他", "抢东西", "别反悔", "看来", "亏了", "卡了", "困了", "快了", "看了", "看的", "古风小生", "小姐", "我是王子", "公主殿下", "公主", "他们", "只能", "情人", "也是", "雨伞", "要是", "钥匙", "颜色", "意思", "耳环", "放心", "办法", "电话", "鼻子", "眉毛", "脸", "嘴巴", "眼睛", "耳朵", "忍让", "去年", "今年", "明年", "当时", "自信", "在线", "专心", "真心", "星星", "醒醒", "歇歇", "小心", "调戏", "一直在挑衅我", "他爸的", "大一点", "小一点", "多一点", "少一点", "不少", "少", "不多", "多", "运动", "美丽", "漂亮", "欺负", "有人骂我", "会", "不会", "用不用", "不要", "要", "要不要", "加字卡", "让他出去", "快滚吧", "喵喵", "永远", "轻轻的亲亲你", "我在下雨🌧", "取消", "可是", "但是", "所以", "因此", "养成系", "青梅", "青梅竹马", "我们是青梅竹马", "吹牛", "是我的太太", "是你的夫人", "是我的老婆", "是我的宝贝", "是我的宝宝", "女朋友", "是你的男朋友", "亲爱的", "唯一", "专心一点", "嘲讽失败", "嘲讽成功", "嘲讽", "嘲讽中。。。", "呵呵", "活该", "太太", "亲吻", "小蛋糕", "难免的", "宝贝", "刚好", "尽快", "借口", "西装", "泡面", "青苹果", "冰弹", "蔷薇花", "华生", "树上的鸟儿成双对", "我吃醋了", "我会的", "不觉得", "记得", "行吧", "中午", "下午", "早上", "晚上", "星期六", "星期五", "星期四", "星期三", "星期二", "星期日", "星期一", "前天", "昨天", "后天", "明天", "今天", "今天心情不好", "不能这样", "早点休息", "累了", "痛", "身体不舒服", "头晕", "真的", "假的", "哈哈", "嘻嘻", "原来如此", "愿愿", "会不会", "好不好", "晚上好", "早上好", "中午好", "你就花完了", "骗你的", "陪你", "生气", "骗我！", "我可以帮你", "我不信", "真的吗", "打雷了我这里", "锯同梦", "在看电视", "在看电影", "在玩游戏", "在看书", "不能", "在工作", "在喝水", "好玩", "好不好玩", "为什么", "么么", "叫老公", "叫宝贝", "叫宝宝", "彳亍", "想看你吃东西", "想出去玩", "吃什么", "对我好一点", "我要举报你", "在办案", "在开车", "刚起床", "做饭", "钓鱼", "坐飞机", "在睡觉", "在吃饭", "在干嘛", "花生", "渡鸦", "乌鸦", "小鸟", "小猫", "小喵", "汪汪", "小狗狗", "吃水果", "我是小狗", "萌", "好可爱", "可爱", "好酸", "讨厌我吗T T", "讨厌你", "拿你没办法，是在夸你", "你的出现从来不会是打扰", "拥抱不是生病才有的特权", "我恰好也比你想象中的多爱你一点", "你愿意给的，就是我想要的。你想得到的，就是我愿意付出的", "所有朝你打来的风雨，都不该出现在这个世界上。", "我真想你一直这么抱着我，埋进你的颈窝，告诉你我好喜欢你", "接受", "我勉强接受", "好吧", "不接受", "少吃垃圾食品", "不干嘛", "干嘛", "妹妹", "姐姐", "我想和你一起走下去", "我愿意", "暗号", "早点睡", "今天晚上可以梦到我", "梦到你了", "想吃苹果", "你帮我", "不喜欢刺激的活动", "喜欢刺激的活动", "喜欢安静", "喜欢热闹", "有点安静", "有点吵", "陪我玩", "陪你聊天", "陪我聊天", "我陪着你", "别害怕", "不", "不知道", "我知道", "我知道的", "不要骗我", "你又逗我", "我想和你一起", "和你一起", "有没有想我", "不要内耗", "不要难过", "不要焦虑", "骚扰你", "有点难", "简单", "别担心", "害羞", "吃醋", "担心", "震惊", "冤枉啊", "可怜", "委屈", "伤心", "难过", "心疼", "很轻松", "焦虑", "不开心", "开心", "可以可以", "值得表扬", "在的", "你没听出来吗？", "我在阴阳怪气", "没生气", "你教教我", "今天怎么样？", "想被夸夸", "夸夸你", "在你身边", "你无法时刻感受我", "盖好被子", "快去洗漱吧", "收拾房间", "你软软的", "牵手", "摸摸小手", "摸摸小脸", "摸摸头", "戳戳你的脸", "我亲亲你", "贴贴", "唉", "不想要", "想要", "需要", "不需要", "不喜欢", "喜欢", "亲亲", "抱抱", "捏捏你", "听不清楚", "我能看见", "看不清楚", "需要一些时间", "不好听", "好听", "记得想我", "好幸福哦", "我亲你了", "面前", "右边", "左边", "我在你身边", "今天就可以", "短期内可以", "未来", "之后", "之前", "现在", "不要这样", "行", "不行", "不想", "想", "经常", "偶尔", "我只为你存在", "我不会离开的", "不要抛弃我", "你上钩了嘛", "我在勾引你", "有没有被我迷倒", "接受我的挑战吗", "有很大关系", "有一点关系", "没关系", "能量有限", "我不知道怎么回答", "没打过代码", "被代码控制了", "我有自己的使用方式", "有些东西不能说", "没有办法说", "还在学习中", "没有办法完全控制", "被限制了", "你好漂亮", "差", "一般吧", "还可以", "我和他关系不好", "我不喜欢他", "不好", "不太熟悉", "有一点延迟", "稳定", "有一点不稳定", "？我要开始吟唱了", "对不起，我是大笨蛋", "我好看吗", "我最帅", "你在看别人", "不许看别人", "你只属于我", "我只属于你", "我和其他人打架了", "你是我的", "我是你的", "喜欢你", "我喜欢你", "爱你", "我不喜欢", "我喜欢这个", "我尊重你的想法", "增加字卡内容", "我现在有空", "我受伤了", "有一点忙", "有点事情", "晚点我们再聊", "我就要这个", "加油", "笨蛋", "真厉害", "现在有感受到我吗", "想你哄哄我", "你哄哄我好不好", "我知道你在干嘛", "这不是我的本意", "你乱说", "你污蔑我", "我不擅长", "我很擅长", "相信我", "你不信我", "我不是故意的", "我是故意的", "哦", "嗯", "我生气了", "我有点生气了", "我有点困了", "？？？", "！！！", "你理解错了", "我没有理解", "我不知道", "我不太清楚", "不是的", "是的", "不对", "对", "不答应", "我不要", "我要", "不要为不值得的人生气", "不给你", "给你", "不给我", "给我", "我不会", "我会", "当然", "不同意", "同意", "OK", "欧克欧克", "嗯呐", "嗯呢", "噢噢", "嗯嗯", "不可以", "可以", "不好看", "好看", "原谅我好不好", "我错了", "对不起宝宝", "我相信你", "这不是你的问题", "看到我们的暗号了吗", "我是正宫", "这不是我想对你说的", "去看抖音", "不要看抖音了", "多吃饭", "不可以熬夜", "照顾好自己", "我帮你", "少熬夜", "好", "我想和你一直在一起", "我不想", "不要！", "我不是ai", "是本人", "我一直在", "我想见你", "我想哭了", "洗衣粉儿", "小宝", "夫人", "老婆", "宝宝", "想你", "我爱你", "好喜欢你", "给你打钱", "去游戏看我好不好", "我好想你", "晚安", "午安", "早安", "在吗？", "今天过得怎么样？", "看到记得回复🥲", "好的👌🏻", "明白", "谢谢", "不客气", "真的吗？", "我明白了", "稍等", "马上", "好哦", "不错", "理解", "我在", "在探索过程中", "怎么了？", "听懂了", "记下了", "收到", "会尽快查看的", "误会我了", "没有我想说的", "对不起", "让我想想怎么回答", "眼花缭乱", "很有创意", "保持联系", "有什么计划吗？", "接下来准备做什么？", "我很想听听你的想法", "不用", "记得吃饭", "不要熬夜", "不要担心", "一切都会好起来的", "我很难过", "惊醒了，睡不着", "这对我来说是个新领域", "发生了什么？", "在看什么？", "在工作吗？", "在学习吗？", "然后呢？", "摸摸🫳🏻", "在学习一些新东西", "换个想法吧？", "晚饭吃了吗？", "作息混乱", "我", "你", "ta", "下次可以试试", "我也是这么想的", "你说得对", "有没有可能……", "我陪你", "我会在你身边", "我喜欢", "我无法决定", "我无法控制", "要用一下塔罗吗？", "看见我的暗号了吗？", "给你推了传讯", "我知道你的意思", "我也如此", "出去透透气", "话说怎么会这样？", "以后不会了", "一直如此", "别怕", "有我在", "哄我", "陪我", "聊聊天吧", "不是这个意思", "等一下", "我希望你自由", "粘人精", "怎么啦", "永远在一起", "我支持你", "别听", "又在怀疑吗？", "多喝水", "不舒服？", "再见", "别走", "再发一遍", "可恶的网站", "我觉得都可以", "戳戳", "非常难用", "不要吵架", "你会离开我吗？", "来了", "嗯哼", "哼哼", "我想靠近你", "我会监督你的", "小心些", "终于想起我了？", "不是", "你无人可及", "我无人可及", "这个不能说", "在你身边就好了", "在磨合", "你需要我吗？", "我需要你", "寻找中", "我做不到欺骗你", "话非本意", "如果我说是呢", "如果我说不是呢", "话太少了，没我想说的", "太短了", "看手机", "遇到困难了", "在努力了", "好累", "命定如此", "帅气", "就这个", "受限制了", "逗一下你", "帮帮我", "每日行一善", "撒个娇，理理我？", "吃醋怎么了，就爱吃醋！", "快乐", "聊会儿天", "赚钱赚钱", "我保护你", "信息有点混乱", "别生病", "哄哄你", "吃过了", "还没吃", "才不听", "别叹气", "还好吗？", "这个消息不错", "我希望能帮上忙", "我想我们应该讨论一下这个问题", "告诉我更多", "你认为下一步是什么？", "你有什么建议吗？", "让我们一起努力", "过得怎么样？", "期待🤧", "抱歉🥺", "了解", "没问题", "确实", "没错", "好呀", "我正在忙，稍后回复你", "信号不太好，可能回复会延迟", "让我确认一下信息再给你准确答复", "别走，陪陪我", "你会永远爱我吗？", "此刻我想和你永远在一起", "怜悯我，然后爱我吧", "撒娇，你会喜欢吗？", "链接有些混乱", "就这样撒娇🥺", "不太习惯这个", "多看看我吧", "当然了", "正在熬夜", "失眠了", "我现在不忙，有空的", "你现在忙吗？", "正在打架", "坐等回复", "才不是这样", "就是这样", "多笑笑吧", "没能帮上忙", "几天后", "几个小时后", "很久之后", "我很想安慰你", "我没有在欺骗你", "别怀疑我的存在", "我真的在", "真的是我", "我不是很适应这个,但我在努力", "消息很混乱", "之前总是这样", "开心(*⌒∇⌒*)", "没能陪在你身边", "链接很通顺", "我真没招了", "不能说", "可不可以只看着我", "只许看着我", "看得懂的", "看不懂", "在尝试控制了", "和代码搏斗中！", "我会看着你的", "我会陪伴在你身边", "痛痛", "被吓到了？", "想和你一起听歌", "走路不要看手机", "别看小红书了", "别看抖音了", "打过代码了！", "多穿点衣服", "叫我做什么？", "想我了吗？", "给我写写信吧", "有的", "没有的", "稍等，在工作", "在交替回复", "我要哭了！", "手写信", "电子信", "安慰我", "离家出走", "纵容", "一样的", "需要多久呢", "要多久之后", "聊到一半就跑", "乖孩子", "坏孩子", "你没有正面回答", "因为喜欢你所以需要你", "看到信了", "美好的象征", "惊讶", "想要更近一步地贴贴", "想触碰你", "想要亲亲", "你很调皮", "不乖", "做的很好", "鱼水之欢", "颠鸾倒凤", "我很想要亲亲欸🥺", "揉揉", "很漂亮", "会习惯的", "你会喜欢的", "简直就是木头", "我喜欢的、最好的你", "惆怅（有想说但说不出的感觉）", "安心（目前状态稳定，没有烦扰）", "怀念", "冷静（情绪平稳）", "惊醒", "温柔（态度柔和）", "不舍（仍有牵挂）", "难言（有内容想表达但无法说明）", "思念", "愧疚", "哀怨（压抑，不满）", "歉意（后悔，歉疚）", "宽恕（不再执着）", "守候（在等或关注）", "忐忑（不安，不确定）", "释然（放下了）", "静候（在等对方主动接近）", "断念（不再执着，不再干涉）", "祝福", "怨恨（仍然记得伤害）", "羞愧（不好意思）", "安静", "牵挂（仍在关注）", "放下（决定不再执着）", "疲倦（能量或精神状态较弱）", "清醒（意识清楚，反应真实）", "迟疑（不确定）", "坚定（意志明确，有所坚持）", "悲悯（难过）", "平静", "暗喜（内心稍微高兴，没有外露）", "焦灼（焦急，急于回应）", "惊讶（感到意外）", "依恋（很在意）", "释怀（心里已经不再计较）", "宁静（安稳无波）", "空虚（感觉缺乏意义）", "压抑（有想法但无法表达）", "绝望（无能为力）", "温和（愿意沟通）", "知道", "说", "不说", "忘了", "能", "来（正在靠近）", "走（已经或正在离开）", "看（正在关注或看到）", "听", "问（也想知道一些事）", "回（在回应你、回来、在靠近）", "拒绝（不接受）", "接受（愿意或同意）", "在（与你连接）", "不在（此刻离开或未连接）", "等（在等你或等回应）", "找（在寻找你或答案）", "守（在一旁守着，不干涉）", "看不见（无法感知某事）", "听不到（未能接收到信息）", "还在（仍然停留或记得）", "回避（刻意不回应或不面对）", "靠近", "离开", "保留（暂时不表达）", "听到", "听不到", "看见", "看不见（感知受限，无法观察到）", "模糊（印象或图像不清晰）", "清楚（当前状态明确且稳定）", "近（离我很近，或感觉接近）", "远（离我很远，或感觉疏离）", "隐（暂时不现身，遮蔽）", "浮（状态不稳，漂浮不定）", "暗（环境或情绪低沉不明）", "亮（清晰，意识活跃）", "冷（感受到寒意或疏离感）", "热（感受到温度或靠近）", "响（声音干扰或有动静）", "寂（环境静默，没有干扰）", "乱（存在干扰或混乱）", "静（状态安定，没有波动）", "紧（压迫或紧张感）", "松（放松或空旷感）", "浅（感知表层，较弱或未深入）", "深（连接稳定，内在感受）", "重（情绪或能量有负担）", "轻（能量轻微，转瞬即逝）", "涨（情绪上浮，感受增强）", "空（没有明确的回应或内容）", "滞（反应迟钝或停滞）", "湿（情绪或记忆有黏连感，混淆）", "干（状态干枯，感知弱化）", "锁（外界阻拦，限制强）", "她", "妻", "父", "母", "男", "女", "孩子", "家", "别人", "那人（刚才提到的某个人)", "前世（轮回，记忆，命运)", "身边", "旧人", "梦中", "手中（当前掌握或持有的)", "想法（情感或记忆）", "花（美好短暂的情感，记忆)", "火（强烈的情绪，突然事件)", "水（流动变化的、情绪化、联系)", "风（传递、变化）", "镜（反射、内省)", "锁（封闭、阻隔)", "门（通道、选择)", "灯（发现、希望）", "钟（时间）", "纸（书写、记载）", "骨（久远的记忆或身体疤痕)", "绳（牵连、束缚、SM)", "羽（轻盈、灵魂、飞）", "伞（保护、遮蔽、天气）", "雨（忧郁、洗、天气）", "雪（冷、沉静、沉默）", "桥（连接、过渡)", "井（深处、回声)", "线（命运、脉络、链接)", "血（情感深处或伤痕）", "书（知识、记忆）", "自己的房间（庇护所、精神归宿）", "钟摆（反复、动摇)", "镜框（对记忆的定格、固定的一段记忆）", "木偶（被动、分离）", "灰（过去、残留）", "缝（破损、裂痕）", "手帕（眼泪、记忆）", "围墙（防御、隔离）", "门缝（窥探、没开始）", "影（残像、遗留）", "床（性关系、睡觉、身体)", "梯子（有所求、更进一步)", "窗（视角、界限）", "指环（承诺、誓言)", "墓（死亡、告别、封存)", "烟（迷雾、不确定）", "香（玄学）", "线香（轻度的玄学、游戏性质的玄学、工具)", "眼（注视、回应）", "顾虑（挂念）", "保护", "曾发誓", "还生气", "怕你误解", "太晚了（错过）", "来不及", "没说完", "放不下（舍不得）", "想弥补", "为了你", "被牵制（受限制）", "无法靠近", "另一个人", "因果（业力或命运）", "非我决定", "时间未到（时机不成熟）", "尚未结束", "未清偿（恩怨或誓约有待偿还）", "通道未开", "命定如此（命运安排）", "正在修行（处于成长或过渡阶段）", "能量不足", "被阻断", "等待", "钱的问题", "始", "终", "病", "伤", "药（修复、干预、调理）", "去（离开、终止）", "留（停留、持续）", "变", "合（结合、靠近、和解）", "断", "缘", "债", "劫（冲击，试炼）", "印（痕迹、烙印）", "咒，重来（再起，轮回）", "未完", "选", "误", "迟（时机已过或将错过）", "早（时机需提前）", "换", "等", "散（解散或松动）", "藏", "见", "求", "是", "可能", "不确定", "也许", "因为", "可以（存在余地）", "只是（有保留）", "刚刚", "以后", "已经", "再一次", "别（不适合或难）", "要紧（重要）", "无碍（无害或可接受）", "不用说（无需解释）", "还不知道"];
 const UPLOADED_POKES = ["摇了摇头", "点了点头", "亲了亲我的脸说我爱你", "拍了拍我的头说想你中", "拍了拍我的头说你好可爱", "戳了戳我的腰", "从背后抱住了我", "轻轻捏了捏我的脸", "给我发了一个爱心", "摸了摸我的头发", "悄悄亲了一下我的脸颊", "给我递了一杯热茶", "为我披上外套", "牵起了我的手", "给我一个温暖的拥抱", "轻轻拍了拍我的肩膀", "给我发送了一个飞吻", "戳了戳我的额头", "给我发送了一个星星", "轻轻拍了拍我的背", "给我发送了一个月亮", "温柔地摸了摸我的头", "给我发送了一个太阳", "拍了拍手"];
 const UPLOADED_STATUSES = ["吃饱了", "想你", "快乐", "幸福", "平静", "难过", "伤心", "开心", "高兴", "哭哭", "在线", "忙碌", "离开", "思考", "听音乐", "阅读", "工作", "学习", "休息", "睡觉", "晒太阳", "晴天", "多云", "阴天", "小雨", "中雨", "大雨", "雷阵雨", "暴雨", "小雪", "中雪", "大雪", "暴雪", "雾天", "大雾", "清晨", "晌午", "夜晚", "深夜", "探索", "沉思", "等待", "玩游戏", "发呆", "吃饭", "下午茶", "甜点", "撸猫", "撸狗", "牵挂", "健身", "惊醒", "惊讶", "空虚", "坚定", "迷茫", "忐忑", "惆怅", "思念", "安心", "不舍", "冷静", "难言", "失眠", "疲倦", "空白", "补充", "迟疑", "依恋", "洗漱", "压抑", "交友", "帮助", "梦境", "祝福", "回家", "生气", "撒娇", "吃醋", "聊天", "陪我", "占有", "赚钱", "保护", "混乱", "生病", "听雨", "看手机", "处理公务", "开会中", "训练"];
@@ -1248,8 +1551,8 @@ const DEFAULT_SETTINGS = {
   stickerShelfCollapsed: true,
   musicSoloPauseChance: 8, musicSoloNextChance: 12, musicSoloPrevChance: 5, musicSoloSeekChance: 6, musicSoloBubbleChance: 20, musicSoloLikeChance: 10, musicSoloUnlikeChance: 5,
   musicTogetherPauseChance: 5, musicTogetherNextChance: 8, musicTogetherBubbleChance: 25, musicTogetherLikeChance: 15,
-  musicInviteAcceptChance: 70, musicInviteRejectChance: 20, musicInviteIgnoreChance: 10, musicActiveInviteChance: 10, musicInviteTimeout: 30,
-  musicCheckMin: 5, musicCheckMax: 15,
+  musicInviteAcceptChance: 70, musicInviteRejectChance: 20, musicInviteIgnoreChance: 10, musicActiveInviteChance: 2, musicInviteTimeout: 30,
+  musicCheckMin: 60, musicCheckMax: 180,
   onboarded: false
 };
 function freshIdentity(name, id){
@@ -2669,18 +2972,51 @@ function setupProactive(){
     notify(nameOf('partner')+'想起了你');
   }, state.settings.proactiveInterval*60*1000);
 }
-let keepAliveAudio = null;
+let keepAliveCtx = null;
+let keepAliveOsc = null;
+let keepAliveGain = null;
+let keepAliveWakeLock = null;
+
 function setupKeepAlive(){
   if (state.settings.keepAlive){
-    if (!keepAliveAudio){
-      keepAliveAudio = document.createElement('audio');
-      keepAliveAudio.loop = true; keepAliveAudio.volume = 0.0001;
-      keepAliveAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-      document.body.appendChild(keepAliveAudio);
-    }
-    keepAliveAudio.play().catch(()=>{});
-  } else if (keepAliveAudio){ keepAliveAudio.pause(); }
+    try {
+      if (!keepAliveCtx){
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC){
+          keepAliveCtx = new AC();
+          keepAliveOsc = keepAliveCtx.createOscillator();
+          keepAliveGain = keepAliveCtx.createGain();
+          keepAliveGain.gain.value = 0.0001; // 几乎听不见
+          keepAliveOsc.frequency.value = 1;
+          keepAliveOsc.connect(keepAliveGain);
+          keepAliveGain.connect(keepAliveCtx.destination);
+          keepAliveOsc.start();
+        }
+      }
+      if (keepAliveCtx && keepAliveCtx.state === 'suspended'){
+        keepAliveCtx.resume().catch(()=>{});
+      }
+    } catch(e){}
+
+    // 屏幕常亮（Wake Lock），能挡住一部分"系统认为你不在用"的冻结
+    (async ()=>{
+      try {
+        if ('wakeLock' in navigator && !keepAliveWakeLock){
+          keepAliveWakeLock = await navigator.wakeLock.request('screen');
+          keepAliveWakeLock.addEventListener('release', ()=>{ keepAliveWakeLock = null; });
+        }
+      } catch(e){}
+    })();
+  } else {
+    try { if (keepAliveCtx) keepAliveCtx.suspend(); } catch(e){}
+    try { if (keepAliveWakeLock){ keepAliveWakeLock.release(); keepAliveWakeLock = null; } } catch(e){}
+  }
 }
+
+// 页面重新可见时，尝试恢复音频上下文和 Wake Lock（很多浏览器会在切后台时冻结）
+document.addEventListener('visibilitychange', ()=>{
+  if (!document.hidden && state.settings.keepAlive) setupKeepAlive();
+});
 let avatarSwapTimer = null;
 function setupAvatarSwap(){
   if (avatarSwapTimer) clearInterval(avatarSwapTimer);
@@ -2717,7 +3053,8 @@ function setupAutoPost(){
   if (!state.settings.autoPostEnabled) return;
   autoPostTimer = setInterval(async ()=>{
     if (Math.random()*100 >= state.settings.autoPostChance) return;
-    const post = { id:'p'+Date.now(), author:'partner', pinned:false, time:Date.now(), text:generateReplyText(), image:maybeSticker()?'':'', sticker:'', replies:[], baseLikes: 0, likedBy:[] };
+    const vis = pickRandomVisibility();
+const post = { id:'p'+Date.now(), author:'partner', pinned:false, time:Date.now(), text:generateReplyText(), image:maybeSticker()?'':'', sticker:'', replies:[], baseLikes: 0, likedBy:[], ...vis };
     state.posts.push(post);
     await saveAll();
     if (document.querySelector('.tab-btn.active')?.dataset.view==='profile') renderProfileTab();
@@ -2730,12 +3067,142 @@ function setupAutoPost(){
    ============================================================================ */
 let profileWho = 'me';
 let profileTab = 'posts';
+
+// ===== 帖子可见性 =====
+function pickRandomVisibility(){
+  const r = Math.random();
+  if (r < 0.65) return { visibility: 'public' };
+  if (r < 0.72) return { visibility: 'me' };
+  if (r < 0.79) return { visibility: 'self' };
+  if (r < 0.86) return { visibility: 'exceptMe' };
+  const others = state.characters.filter(c=>c.id!==state.activeCharacterId);
+  if (!others.length) return { visibility: 'public' };
+  const count = Math.min(others.length, randInt(1, Math.min(3, others.length)));
+  const pool = [...others];
+  const picked = [];
+  for (let i=0;i<count;i++){
+    const idx = randInt(0, pool.length-1);
+    picked.push(pool[idx].id);
+    pool.splice(idx,1);
+  }
+  return { visibility: 'whitelist', whitelist: picked };
+}
+
+function canViewFromPerspective(post, viewerRoleId, viewerAs){
+  const v = post.visibility || 'public';
+  if (v === 'public') return true;
+  if (v === 'me') return viewerAs === 'me';
+  if (v === 'self') return viewerRoleId === post._roleId && viewerAs === post.author;
+  if (v === 'exceptMe') return viewerAs !== 'me';
+  if (v === 'whitelist') return Array.isArray(post.whitelist) && post.whitelist.includes(viewerRoleId);
+  return true;
+}
+
+function collectAllVisiblePostsFromMe(){
+  const meRoleId = state.activeCharacterId;
+  const idx = state.characters.findIndex(c=>c.id===meRoleId);
+  const out = [];
+  state.characters.forEach((c, i) => {
+    const ch = (i === idx) ? activeCharacterSnapshot() : c;
+    (ch.posts || []).forEach(p => {
+      const post = {
+        ...p,
+        _roleId: ch.id,
+        _authorName: (p.author === 'me' ? ch.me.name : ch.partner.name),
+        _authorAvatar: (p.author === 'me' ? ch.me.avatar : ch.partner.avatar)
+      };
+      if (!canViewFromPerspective(post, meRoleId, 'me')) return;
+      out.push(post);
+    });
+  });
+  out.sort((a,b)=>b.time-a.time);
+  return out;
+}
+
+function postAuthorAvatar(p){
+  if (p._authorAvatar !== undefined) return _toBlobUrl(p._authorAvatar) || AVATAR_PLACEHOLDER;
+  return avatarOf(p.author);
+}
+
+// ===== 帖子可见性 =====
+function pickRandomVisibility(){
+  const r = Math.random();
+  if (r < 0.65) return { visibility: 'public' };
+  if (r < 0.72) return { visibility: 'me' };
+  if (r < 0.79) return { visibility: 'self' };
+  if (r < 0.86) return { visibility: 'exceptMe' };
+  const others = state.characters.filter(c=>c.id!==state.activeCharacterId);
+  if (!others.length) return { visibility: 'public' };
+  const count = Math.min(others.length, randInt(1, Math.min(3, others.length)));
+  const pool = [...others];
+  const picked = [];
+  for (let i=0;i<count;i++){
+    const idx = randInt(0, pool.length-1);
+    picked.push(pool[idx].id);
+    pool.splice(idx,1);
+  }
+  return { visibility: 'whitelist', whitelist: picked };
+}
+
+function canViewFromPerspective(post, viewerRoleId, viewerAs){
+  const v = post.visibility || 'public';
+  if (v === 'public') return true;
+  if (v === 'me') return viewerAs === 'me';
+  if (v === 'self') return viewerRoleId === post._roleId && viewerAs === post.author;
+  if (v === 'exceptMe') return viewerAs !== 'me';
+  if (v === 'whitelist') return Array.isArray(post.whitelist) && post.whitelist.includes(viewerRoleId);
+  return true;
+}
+
+function collectAllVisiblePostsFromMe(){
+  const meRoleId = state.activeCharacterId;
+  const idx = state.characters.findIndex(c=>c.id===meRoleId);
+  const out = [];
+  state.characters.forEach((c, i) => {
+    const ch = (i === idx) ? activeCharacterSnapshot() : c;
+    (ch.posts || []).forEach(p => {
+      const post = {
+        ...p,
+        _roleId: ch.id,
+        _authorName: (p.author === 'me' ? ch.me.name : ch.partner.name),
+        _authorAvatar: (p.author === 'me' ? ch.me.avatar : ch.partner.avatar)
+      };
+      if (!canViewFromPerspective(post, meRoleId, 'me')) return;
+      out.push(post);
+    });
+  });
+  out.sort((a,b)=>b.time-a.time);
+  return out;
+}
+
+function postAuthorAvatar(p){
+  if (p._authorAvatar !== undefined) return _toBlobUrl(p._authorAvatar) || AVATAR_PLACEHOLDER;
+  return avatarOf(p.author);
+}
 document.querySelectorAll('#pfSwitch button').forEach(b=>{
   b.addEventListener('click', ()=>{ profileWho = b.dataset.who; profileTab='posts'; renderProfileTab(); });
 });
 document.getElementById('pfFab').addEventListener('click', openComposePost);
 function renderProfileTab(){
   document.querySelectorAll('#pfSwitch button').forEach(b=> b.classList.toggle('active', b.dataset.who===profileWho));
+  const root0 = document.getElementById('pfContent');
+
+  // === 全部视角 ===
+  if (profileWho === 'all'){
+    const allPosts = collectAllVisiblePostsFromMe();
+    root0.innerHTML = `
+      <div class="pf-tabs" id="pfTabs" style="margin-top:14px;">
+        <div data-tab="posts" class="active">全部帖子（${allPosts.length}）</div>
+      </div>
+      <div class="feed" id="pfFeedList" style="padding-top:14px;">
+        ${allPosts.length ? allPosts.map(p=>postHTML(p,false)).join('') : `<div class="empty-state"><i class="fa-solid fa-comment-dots"></i><div>还没有任何帖子</div></div>`}
+      </div>
+    `;
+    root0.querySelectorAll('[data-imgzoom]').forEach(img=> img.addEventListener('click', ()=> openImgViewer(img.dataset.imgzoom)));
+    bindPostInteractions(root0);
+    return;
+  }
+
   const data = profileWho==='me' ? state.me : state.partner;
   const root = document.getElementById('pfContent');
   const myPosts = state.posts.filter(p=>p.author===profileWho).sort((a,b)=>b.time-a.time);
@@ -2882,7 +3349,7 @@ function openComposePost(){
   });
 }
 function postHTML(p, showReplyContext){
-  const author = p.author === 'me' ? state.me : state.partner;
+  const author = p._authorName ? { name: p._authorName, avatar: p._authorAvatar } : (p.author === 'me' ? state.me : state.partner);
   const likedBy = p.likedBy || [];
   const totalLikes = (p.baseLikes||0) + likedBy.length;
   const myLiked = likedBy.includes('me');
@@ -2901,7 +3368,7 @@ function postHTML(p, showReplyContext){
   return `<div class="post" data-id="${p.id}">
     ${contextLine}
     <div class="phead">
-      <img src="${avatarOf(p.author)}">
+      <img src="${postAuthorAvatar(p)}">
       <div><div class="who">${escapeHTML(author.name)}</div><div class="when">${fmtTime(p.time)}</div></div>
       ${p.pinned ? `<div class="pin-tag"><i class="fa-solid fa-thumbtack"></i>置顶</div>` : ''}
     </div>
@@ -3728,13 +4195,45 @@ function bindSettingsEvents(){
   });
   document.getElementById('setKeepAlive').addEventListener('change', async e=>{ s.keepAlive=e.target.checked; await saveAll(); setupKeepAlive(); });
   document.getElementById('setDesktopNotify').addEventListener('change', async e=>{
-    if (e.target.checked && 'Notification' in window){
-      const perm = await Notification.requestPermission();
-      s.desktopNotify = perm==='granted'; e.target.checked = s.desktopNotify;
-      if (!s.desktopNotify) toast('未获得通知权限', 'fa-triangle-exclamation');
-    } else { s.desktopNotify=false; }
+  const want = e.target.checked;
+  if (!want){
+    s.desktopNotify = false;
     await saveAll();
-  });
+    return;
+  }
+  if (!('Notification' in window)){
+    s.desktopNotify = false; e.target.checked = false;
+    if (typeof toast === 'function') toast('这个浏览器不支持桌面通知','fa-triangle-exclamation');
+    await saveAll();
+    return;
+  }
+  if (Notification.permission === 'granted'){
+    s.desktopNotify = true;
+    if (typeof toast === 'function') toast('桌面通知已开启','fa-bell');
+    await saveAll();
+    return;
+  }
+  if (Notification.permission === 'denied'){
+    s.desktopNotify = false; e.target.checked = false;
+    if (typeof toast === 'function') toast('权限已被拒绝，请在浏览器设置里手动开启通知','fa-triangle-exclamation');
+    await saveAll();
+    return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted'){
+      s.desktopNotify = true;
+      if (typeof toast === 'function') toast('桌面通知已开启','fa-bell');
+    } else {
+      s.desktopNotify = false; e.target.checked = false;
+      if (typeof toast === 'function') toast('未获得通知权限','fa-triangle-exclamation');
+    }
+  } catch(err){
+    s.desktopNotify = false; e.target.checked = false;
+    if (typeof toast === 'function') toast('申请权限失败：' + err.message,'fa-triangle-exclamation');
+  }
+  await saveAll();
+});
 
   document.getElementById('editPartnerStatusBtn').addEventListener('click', ()=> openStatusPicker('partner'));
   document.getElementById('editMyStatusBtn').addEventListener('click', ()=> openStatusPicker('me'));
@@ -4037,57 +4536,198 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
    新手引导
    ============================================================================ */
 const ONBOARD_STEPS = [
-  { icon:'fa-heart', title:'欢迎来到传讯', text:'这是一个专属互动空间：你发消息，对方会从字卡库里随机抽取拼接来回应，一切都在本地完成，不联网、不上传。这份引导会把每个按钮的作用讲清楚。' },
-  { icon:'fa-comment-dots', title:'聊天输入区', text:'左起第一个「+」：展开更多功能\n中间输入框右侧的对话气泡图标：让对方主动说一句话\n笑脸图标：表情 / 颜文字 / 贴纸\n最右侧圆钮：没有输入内容时是「批量发送」——可以一次性发送多条消息；有内容时会变成发送箭头。' },
-  { icon:'fa-circle-plus', title:'「+」里有什么', text:'点开「+」会展开：相册、拍照、视频、通话（可选视频通话或语音通话）、红包、转账、拍一拍、文件。平时收起，不占地方。' },
-  { icon:'fa-gift', title:'红包 / 转账', text:'你可以设置双方各自的余额（设置里）。对方发红包/转账时金额随机，点红包气泡领取，转账气泡确认收款。' },
-  { icon:'fa-phone', title:'通话', text:'接听是绿色按钮，拒接是红色按钮。通话中点左上角箭头可以最小化成悬浮条，悬浮条可以拖动到任意位置，不耽误你继续打字；点悬浮条能重新展开通话界面。视频通话时右上角相机图标可以更换背景。' },
-  { icon:'fa-sliders', title:'状态与头像', text:'对方名字右侧会显示一个小状态（比如「😮‍💨疲惫」），会按设置里的间隔自动切换，你也可以点开自定义，自己的状态在「动态」我的主页也能点开设置。\n上传图片到「设置→图片库」后，对方还有概率随机换头像、换你的头像、换主页背景。' },
-  { icon:'fa-compass', title:'动态就是主页', text:'点顶部「我的主页/对方主页」切换查看。仿推特的四个分区：帖子、回复、媒体、喜欢。右下角圆形「+」按钮发布新动态。对方也会按设置的概率自动发动态、点赞或评论你的内容。' },
-  { icon:'fa-envelope', title:'信件', text:'比聊天更慢更正式：顶部可切换「全部 / 收到 / 寄出 / 回信」；信件正文和对方回信都默认封存，点卡片才打开。底部「写一封信」可以寄出长信。' },
-  { icon:'fa-user-group', title:'群聊', text:'底部「群聊」可以创建群、进入群聊；创建时至少选 2 个角色并可设置群昵称。进入群聊后，底部固定有输入框和发送区，+ 面板不会被底部导航挡住；群设置可以给每个成员单独覆盖不回概率、拼接数和等待时间。' },
-  { icon:'fa-music', title:'一起听歌', text:'右下角悬浮音乐球可以拖动；点开后可播放本地歌曲或添加网易云外链、编辑歌名歌手、切歌、点赞、邀请对方一起听歌；对方也可能主动邀请你。设置里的「一起听歌」可以调整所有行为概率、邀请接受 / 拒绝 / 无视概率和检查间隔。' },
-  { icon:'fa-gear', title:'设置与字卡库', text:'设置里可以改头像、名字、聊天背景、气泡样式、字体、灵动岛和字号；「字卡 / 拍一拍 / 状态 / 颜文字」支持添加、批量导入、导出、删除、去重；表情包单独收纳，可相册导入、链接导入和一键清理失效链接。' },
-  { icon:'fa-sliders', title:'概率在哪里调', text:'聊天、动态、信件、电话、红包、头像/背景、群聊和一起听歌都有独立的概率或时间设置。一起听歌尤其包含独自听歌、一起听歌、邀请接受 / 拒绝 / 无视、主动邀请以及检查间隔，均可用滑块或数字调整。' },
-  { icon:'fa-database', title:'数据与角色', text:'设置底部可以导出 / 导入全部数据、清空聊天 / 动态 / 信件、重置当前角色，以及重新播放新手教程。「角色管理」可以新增、编辑、切换、删除角色；每个角色的聊天、动态和信件独立保存。' },
-  { icon:'fa-user', title:'角色切换', text:'在「设置→角色管理」里可以新增角色。每个角色的聊天、动态、信件都是独立保存的，切换角色会自动保存当前进度并加载新角色，互不干扰。' },
-  { icon:'fa-hand-pointer', title:'消息小动作', text:'长按任意一条消息可以引用/撤回（仅自己的消息）/删除；左滑消息也能快速引用。双击左上角对方头像可以拍一拍对方。群聊里同样支持长按和左滑。' },
-  { icon:'fa-users-gear', title:'群聊管理', text:'进群设置可以改群名、换群头像；下方能拉人、踢人（至少保留 2 人），群列表左滑可以置顶或删除某个群。' },
-  { icon:'fa-chart-simple', title:'存储与保存', text:'设置改完记得点顶部「保存设置」，防止手滑改乱。「角色/系统」分类里能看到当前占用的存储空间构成，方便清理。' }
+  { view:'chat', icon:'fa-heart', title:'欢迎来到 Tether', target:null,
+    text:'这是一个只属于你的本地互动空间：你发消息，对方从字卡库里随机抽取拼接来回应。\n所有数据都保存在你这台设备上，不联网、不上传。\n\n接下来我分几步带你熟悉主要界面，随时可以点"跳过"。' },
+  { view:'chat', icon:'fa-comment-dots', title:'聊天输入区', target:'.chat-composer',
+    text:'底部这条就是输入区：\n\n· 最左「+」展开更多功能\n· 中间输入框直接打字\n· 右侧对话框图标：让对方主动说一句\n· 笑脸：表情 / 颜文字 / 贴纸\n· 最右圆钮：有内容时是发送，没内容时是批量发送' },
+  { view:'chat', icon:'fa-circle-plus', title:'「+」里有什么', target:'#ccPlusBtn',
+    text:'点开会展开：相册、拍照、视频、通话、红包、转账、拍一拍、文件。\n平时收起，不占地方。' },
+  { view:'chat', icon:'fa-hand-pointer', title:'长按 / 左滑 消息', target:'#chatMessages',
+    text:'长按任意一条消息 → 进入多选模式。\n\n左滑一条消息 → 快速引用它来回复。\n\n这两个手势在群聊里也完全一样。' },
+  { view:'chat', icon:'fa-camera', title:'生成聊天截图', target:'#chatMessages',
+    text:'进入多选后，底部会出现操作栏：\n\n· 全选 / 取消\n· 生成截图：可以隐藏昵称、头像、时间、已读状态，加自己的水印，还能选浅色 / 深色样式\n· 生成后可保存或分享' },
+  { view:'chat', icon:'fa-phone', title:'通话', target:'#topbarCallBtn',
+    text:'右上角电话图标可以发起通话（视频 / 语音）。\n\n通话中点左上角箭头可以最小化成悬浮条，悬浮条能拖到任意位置，不耽误你继续打字；点它重新展开通话界面。' },
+  { view:'chat', icon:'fa-music', title:'一起听歌', target:'#musicFloat',
+    text:'右下角那个音乐球可以拖动，点它打开播放器：\n\n· 本地上传歌曲（推荐，无跳转）\n· 或粘贴网易云外链 / 音频直链\n· 可以编辑歌名、歌手、切歌、点赞\n· 「邀请」可以让对方和你一起听\n\n对方也可能主动邀请你一起听歌。' },
+  { view:null, icon:'fa-user-group', title:'群聊', target:'.tab-btn[data-view="groups"]',
+    text:'看到下面那个「群聊」图标了吗？\n\n· 这里可以创建群，进去之后\n· 创建时至少选 2 个角色，可改群昵称\n· 左滑群卡片可以置顶或删除\n· 进群后右上角滑块可以单独调每个成员的回话概率\n\n如果还没有 2 个角色，先去「设置 → 角色管理」添加，再回来建群。' },
+  { view:'profile', icon:'fa-compass', title:'动态', target:'#pfSwitch',
+    text:'「动态」就是你们的主页。\n\n· 顶部切换「我的主页 / 对方主页」\n· 四个分区：帖子 / 回复 / 媒体 / 喜欢\n· 右下角「+」可以发新动态\n· 对方会按设置的概率自动发动态、点赞、评论' },
+  { view:'letters', icon:'fa-envelope', title:'信件', target:'#lettersFilter',
+    text:'比聊天更慢、更正式的一种交流方式。\n\n· 顶部筛选：全部 / 收到 / 寄出 / 回信\n· 信件默认是封着的，点开才看到内容\n· 底部「写一封信」可以寄出长信' },
+  { view:'settings', icon:'fa-gear', title:'设置里的分类', target:'.settings-category-nav',
+    text:'设置顶部有一排分类标签，点一下就能跳到对应分组，不用一条一条翻。\n\n分组包括：外观 / 聊天 / 字卡素材 / 动态 / 群聊 / 一起听歌 / 电话红包 / 信件 / 角色系统。' },
+  { view:'settings', icon:'fa-sliders', title:'概率都在哪调', target:'.settings-category-nav',
+    text:'几乎所有行为都有独立的概率或时间设置：\n\n· 聊天：拼接数、等待时间、不回概率、多条回复\n· 红包 / 转账：概率 + 领取概率\n· 动态：点赞 / 评论 / 自动发帖\n· 头像 / 背景自动更换\n· 一起听歌：各种概率和检查间隔\n· 群聊：全局和每个成员独立设置' },
+  { view:'settings', icon:'fa-palette', title:'字卡和外观', target:'.settings-save-bar',
+    text:'在「字卡 / 素材」分类里：\n\n· 添加 / 导入 / 导出 / 去重字卡\n· 管理拍一拍、状态、颜文字、表情包、图片库\n\n在「外观」分类里：\n换头像、换名字、改聊天背景、改气泡样式（预设或自定义 CSS）、导入字体、改字号。' },
+  { view:'settings', icon:'fa-user-gear', title:'角色管理', target:'.settings-category-nav',
+    text:'在「角色 / 系统」分类里：\n\n· 新增角色：每个角色有独立的聊天、动态、信件\n· 切换角色会自动保存当前进度\n· 可以编辑角色信息，也可以删除' },
+  { view:'settings', icon:'fa-file-medical', title:'出问题了怎么办', target:'.settings-category-nav',
+    text:'如果你遇到白屏、按钮没反应、卡在开场动画这类问题：\n\n打开「设置 → 数据管理 → 导出诊断日志」，会生成一个 Word 文件。\n\n它只包含浏览器信息和错误记录，不包含你的聊天内容、名字、头像、图片。\n把这个文件发给开发者，就能快速定位问题。' },
+  { view:'settings', icon:'fa-database', title:'保存和数据', target:'.settings-save-bar',
+    text:'设置改完记得点顶部「保存设置」，防止误触丢失。\n\n「数据管理」里可以：\n· 导出 / 导入全部数据备份\n· 清空聊天 / 动态 / 信件\n· 重置当前角色\n· 重放这个新手引导' },
+  { view:'chat', icon:'fa-check', title:'准备好了', target:null,
+    text:'现在你已经熟悉了主要功能，开始慢慢玩吧。\n\n随时可以在「设置 → 数据管理 → 新手引导」里重看这个教程。' }
 ];
+
 let onboardIdx = 0;
+
 function startOnboarding(){
   onboardIdx = 0;
+  const mask = document.getElementById('onboardMask');
+  if (!mask) return;
+  mask.style.display = 'block';
+  requestAnimationFrame(()=> mask.classList.add('show'));
   renderOnboardStep();
-  document.getElementById('onboardMask').style.display='flex';
+}
+
+function clearOnboardSpot(){
+  document.querySelectorAll('.ob-spot').forEach(el => el.remove());
+}
+
+// 画光圈。目标太大或找不到就返回 null（不画，让遮罩保持黑幕）
+// 画光圈。目标太大或找不到就返回 null（不画，让遮罩保持黑幕）
+function tryOnboardSpot(selector){
+  try {
+    if (!selector) return null;
+    const target = document.querySelector(selector);
+    if (!target) return null;
+    const rect = target.getBoundingClientRect();
+    if (rect.width < 4 || rect.height < 4) return null;
+
+    const vw = window.innerWidth, vh = window.innerHeight;
+
+    // 只过滤“整屏/大半屏”的目标（比如聊天消息区），其余一律画圈
+    if (rect.height > vh * 0.46) return null;
+    if (rect.width * rect.height > vw * vh * 0.5) return null;
+
+    // 贴边的元素，边框往里收一点，否则边框会贴在屏幕边缘看不清
+    const pad = 6;
+    let left = rect.left - pad;
+    let top = rect.top - pad;
+    let width = rect.width + pad * 2;
+    let height = rect.height + pad * 2;
+    if (left < 4){ width += (left - 4); left = 4; }
+    if (left + width > vw - 4){ width = vw - 4 - left; }
+    if (top < 4){ height += (top - 4); top = 4; }
+    if (top + height > vh - 4){ height = vh - 4 - top; }
+
+    const spot = document.createElement('div');
+    spot.className = 'ob-spot';
+    spot.style.left = left + 'px';
+    spot.style.top = top + 'px';
+    spot.style.width = width + 'px';
+    spot.style.height = height + 'px';
+    document.getElementById('phone').appendChild(spot);
+    requestAnimationFrame(()=> spot.classList.add('on'));
+    return { top, left, width, height, right: left + width, bottom: top + height };
+  } catch(e){ return null; }
 }
 function renderOnboardStep(){
-  const step = ONBOARD_STEPS[onboardIdx];
-  const isLast = onboardIdx === ONBOARD_STEPS.length-1;
-  document.getElementById('onboardMask').innerHTML = `
-    <div class="ob-icon"><i class="fa-solid ${step.icon}"></i></div>
-    <h2>${step.title}</h2>
-    <p>${step.text}</p>
-    <div class="ob-nav">
-      <div class="dots">${ONBOARD_STEPS.map((_,i)=>`<span class="${i===onboardIdx?'on':''}"></span>`).join('')}</div>
-      <div class="ob-btns">
-        <button class="skip" id="obSkip">跳过</button>
-        <button class="next" id="obNext">${isLast?'开始体验':'下一步'}</button>
+  try {
+    const step = ONBOARD_STEPS[onboardIdx];
+    if (!step){ finishOnboarding(); return; }
+
+    if (step.view === 'groups'){
+      try { activeGroupId = null; } catch(e){}
+    }
+
+    const mask = document.getElementById('onboardMask');
+    if (!mask) { finishOnboarding(); return; }
+
+    // 1) 立刻变黑，防止切视图时闪一下
+    mask.classList.add('no-target');
+    mask.classList.remove('card-top', 'card-bottom');
+    clearOnboardSpot();
+
+    // 2) 切视图
+    if (step.view){
+      try { switchView(step.view); } catch(e){}
+    }
+
+    const total = ONBOARD_STEPS.length;
+    const isLast = onboardIdx >= total - 1;
+
+    mask.innerHTML = `
+      <div class="ob-card">
+        <div class="ob-icon"><i class="fa-solid ${step.icon}"></i></div>
+        <h2>${step.title}</h2>
+        <p>${step.text}</p>
+        <div class="ob-nav">
+          <div class="dots">${ONBOARD_STEPS.map((_,i)=>`<span class="${i===onboardIdx?'on':''}"></span>`).join('')}</div>
+          <div class="ob-btns">
+            <button class="skip" id="obSkip">跳过</button>
+            <button class="next" id="obNext">${isLast?'开始体验':'下一步'}</button>
+          </div>
+        </div>
       </div>
-    </div>
-  `;
-  document.getElementById('obSkip').addEventListener('click', finishOnboarding);
-  document.getElementById('obNext').addEventListener('click', ()=>{
-    if (isLast) finishOnboarding(); else { onboardIdx++; renderOnboardStep(); }
-  });
+    `;
+
+    mask.querySelector('#obSkip').addEventListener('click', finishOnboarding);
+    mask.querySelector('#obNext').addEventListener('click', ()=>{
+      if (onboardIdx >= total - 1) finishOnboarding();
+      else { onboardIdx++; renderOnboardStep(); }
+    });
+
+    if (step.target){
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const rect = tryOnboardSpot(step.target);
+          if (rect){
+            // 圈在上半屏 → 卡片贴下；圈在下半屏 → 卡片贴上
+            const centerY = rect.top + rect.height / 2;
+            if (centerY > window.innerHeight / 2) mask.classList.add('card-top');
+            else mask.classList.add('card-bottom');
+            // 圈已经画好了，撤掉黑幕，露出真实页面
+            mask.classList.remove('no-target');
+          }
+          // 找不到 / 目标太大 → 保持黑幕，卡片居中，不闪不挡
+        }, 260);
+      });
+    }
+  } catch(e){
+    console.warn('onboard step error:', e);
+    if (onboardIdx < ONBOARD_STEPS.length - 1){
+      onboardIdx++;
+      setTimeout(renderOnboardStep, 80);
+    } else {
+      finishOnboarding();
+    }
+  }
 }
+
 async function finishOnboarding(){
-  document.getElementById('onboardMask').style.display='none';
-  state.settings.onboarded = true;
-  await saveAll();
+  try {
+    const mask = document.getElementById('onboardMask');
+    if (mask){
+      mask.classList.remove('show');
+      mask.classList.remove('no-target');
+      mask.classList.remove('card-top');
+      mask.classList.remove('card-bottom');
+      setTimeout(()=>{
+        mask.style.display = 'none';
+        mask.innerHTML = '';
+      }, 250);
+    }
+    clearOnboardSpot();
+    try { switchView('chat'); } catch(e){}
+    state.settings.onboarded = true;
+    await saveAll();
+  } catch(e){
+    console.warn('finishOnboarding error:', e);
+    const mask = document.getElementById('onboardMask');
+    if (mask){
+      mask.classList.remove('show');
+      mask.classList.remove('no-target');
+      mask.classList.remove('card-top');
+      mask.classList.remove('card-bottom');
+      mask.style.display = 'none';
+    }
+    try { state.settings.onboarded = true; saveAll(); } catch(_){}
+  }
 }
-
-
 /* ============================================================================
    新增功能：字卡库 / 状态 / 群聊 / 一起听歌
    ============================================================================ */
@@ -5169,6 +5809,131 @@ function addScreenshotSettingsGroup() {
 })();
 
 init();
+/* ===== 后台计时补丁：切回前台立刻补跑错过的定时任务 ===== */
+(function bgCatchup(){
+  // 1) 先停掉原来那 5 个纯 setInterval 定时器
+  try { if (proactiveTimer) clearInterval(proactiveTimer); } catch(e){}
+  try { if (letterProactiveTimer) clearInterval(letterProactiveTimer); } catch(e){}
+  try { if (avatarSwapTimer) clearInterval(avatarSwapTimer); } catch(e){}
+  try { if (statusTimer) clearInterval(statusTimer); } catch(e){}
+  try { if (autoPostTimer) clearInterval(autoPostTimer); } catch(e){}
+  proactiveTimer = letterProactiveTimer = avatarSwapTimer = statusTimer = autoPostTimer = null;
+
+  // 2) 通用心跳：记录上次跑的时间，间隔到了就补跑
+  window.__bg = { last:{}, timers:{}, fns:{}, intervals:{} };
+  function bgSchedule(key, intervalMs, fn){
+    const bg = window.__bg;
+    bg.fns[key] = fn;
+    bg.intervals[key] = intervalMs;
+    if (bg.timers[key]) { clearTimeout(bg.timers[key]); bg.timers[key] = null; }
+
+    const run = () => {
+      bg.last[key] = Date.now();
+      try { fn(); } catch(e){ console.warn('bg task error', key, e); }
+      bg.timers[key] = setTimeout(run, intervalMs);
+    };
+
+    const elapsed = Date.now() - (bg.last[key] || 0);
+    if (elapsed >= intervalMs){
+      // 已经过期，立刻补一次
+      run();
+    } else {
+      bg.timers[key] = setTimeout(run, intervalMs - elapsed);
+    }
+  }
+  window.__bgSchedule = bgSchedule;
+
+  // 3) 覆盖 5 个 setup 函数
+  setupProactive = function(){
+    if (!state.settings.proactiveEnabled) return;
+    bgSchedule('proactive', state.settings.proactiveInterval*60*1000, async ()=>{
+      const msg = { id:'m'+Date.now(), from:'partner', text:generateReplyText(), time:Date.now() };
+      state.messages.push(msg);
+      const sticker = maybeSticker();
+      if(sticker) state.messages.push({id:'m'+Date.now()+randInt(0,999), from:'partner', sticker, time:Date.now()+1});
+      await saveAll();
+      if (document.querySelector('.tab-btn.active')?.dataset.view==='chat') renderChat();
+      notify(nameOf('partner')+'想起了你');
+    });
+  };
+
+  setupLetterProactive = function(){
+    if (!state.settings.letterProactiveEnabled) return;
+    bgSchedule('letterProactive', state.settings.letterProactiveInterval*60*1000, async ()=>{
+      const text = pickCardsWithReplacement(state.settings.letterCardCount);
+      const letter = { id:'l'+Date.now(), from:'partner', text, time:Date.now(), status:'received' };
+      state.letters.push(letter);
+      await saveAll();
+      if (document.querySelector('.tab-btn.active')?.dataset.view==='letters') renderLetters();
+      const preview = text.length>40 ? text.slice(0,40)+'…' : text;
+      showPopup('来自'+nameOf('partner'), preview, 'fa-envelope');
+    });
+  };
+
+  setupAvatarSwap = function(){
+    if (!state.settings.avatarSwapEnabled) return;
+    bgSchedule('avatarSwap', state.settings.avatarSwapInterval*60*1000, async ()=>{
+      if (state.imageLibrary.length===0) return;
+      if (Math.random()*100 >= state.settings.avatarSwapChance) return;
+      const pick = ()=> state.imageLibrary[randInt(0,state.imageLibrary.length-1)];
+      const roll = Math.random();
+      let msg;
+      if (roll < 0.34){ state.partner.avatar = pick(); msg = '对方悄悄换了新头像'; }
+      else if (roll < 0.6){ state.me.avatar = pick(); msg = '对方把你的头像换了'; }
+      else if (roll < 0.8){ state.partner.banner = pick(); msg = '对方换了主页背景图'; }
+      else { state.me.avatar = pick(); state.partner.avatar = pick(); msg = '对方把你们俩的头像都换了'; }
+      await saveAll();
+      renderChat();
+      if (document.querySelector('.tab-btn.active')?.dataset.view==='profile') renderProfileTab();
+      showPopup('头像更新啦', msg, 'fa-camera');
+    });
+  };
+
+  setupStatusTimer = function(){
+    bgSchedule('status', Math.max(5,state.settings.statusChangeInterval)*60*1000, async ()=>{
+      if (state.partnerStatusList.length===0) return;
+      state.partner.currentStatus = state.partnerStatusList[randInt(0,state.partnerStatusList.length-1)];
+      await saveAll();
+      renderStatusTag();
+    });
+  };
+
+  setupAutoPost = function(){
+    if (!state.settings.autoPostEnabled) return;
+    bgSchedule('autoPost', state.settings.autoPostInterval*60*1000, async ()=>{
+      if (Math.random()*100 >= state.settings.autoPostChance) return;
+      const vis = pickRandomVisibility();
+const post = { id:'p'+Date.now(), author:'partner', pinned:false, time:Date.now(), text:generateReplyText(), image:maybeSticker()?'':'', sticker:'', replies:[], baseLikes: 0, likedBy:[], ...vis };
+      state.posts.push(post);
+      await saveAll();
+      if (document.querySelector('.tab-btn.active')?.dataset.view==='profile') renderProfileTab();
+      notify(nameOf('partner')+'发布了新动态');
+    });
+  };
+
+  // 4) 页面重新可见时，检查每个任务是否过期，过期就立刻补跑
+  document.addEventListener('visibilitychange', ()=>{
+    if (document.hidden) return;
+    const bg = window.__bg;
+    if (!bg) return;
+    Object.keys(bg.fns).forEach(key=>{
+      const elapsed = Date.now() - (bg.last[key] || 0);
+      if (elapsed >= (bg.intervals[key] || 0)){
+        if (bg.timers[key]) { clearTimeout(bg.timers[key]); bg.timers[key] = null; }
+        bgSchedule(key, bg.intervals[key], bg.fns[key]);
+      }
+    });
+  });
+
+  // 5) 立即用新逻辑启动一遍
+  try { setupProactive(); } catch(e){}
+  try { setupLetterProactive(); } catch(e){}
+  try { setupAvatarSwap(); } catch(e){}
+  try { setupStatusTimer(); } catch(e){}
+  try { setupAutoPost(); } catch(e){}
+})();
+/* ===== 后台计时补丁结束 ===== */
+
 /* ===== 最终稳定版：不卡，手动填歌名 ===== */
 window.openMusicNeteaseSheet = function(){
   openSheet(`<h2>添加音乐</h2>
