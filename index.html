@@ -754,7 +754,7 @@ i { display: inline-flex; align-items: center; justify-content: center; }
   to { opacity: 1; transform: none; }
 }
 .chat-row.msg-enter, .group-row.msg-enter, .chat-sysline.msg-enter {
-  animation: tetherMsgIn .32s cubic-bezier(.2,.8,.2,1) both;
+  animation: tetherMsgIn .32s cubic-bezier(.2,.8,.2,1) backwards;
 }
 .chat-row.msg-enter.me { animation-name: tetherMsgInMe; }
 @keyframes tetherMsgInMe {
@@ -2544,11 +2544,14 @@ async function sendStickerDirect(stickerUrl){
   let pressTimer = null, pressedRow = null;
   let startX = 0, startY = 0, tracking = false, swiping = false, quoteReady = false;
 
-  const resetRow = (row)=>{
-    if (!row) return;
-    row.classList.remove('swiping');
-    row.style.transform = '';
-  };
+const resetRow = (row)=>{
+  if (!row) return;
+  row.classList.remove('swiping');
+  void row.offsetHeight;
+  requestAnimationFrame(()=>{
+    row.style.transform = 'translate3d(0,0,0)';
+  });
+};
 
   const clearPress = (keepRow=false)=>{
     if (pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
@@ -5627,7 +5630,7 @@ if (m.sticker) { const u = _toBlobUrl(m.sticker); parts.push(`<img class="cr-sti
   // 判定阈值更低更跟手，不再被浏览器的原生滚动抢走手势）
   let pressTimer = null, pressedRow = null;
   let startX = 0, startY = 0, tracking = false, swiping = false, quoteReady = false;
-  const resetRow = (row)=>{ if (!row) return; row.classList.remove('swiping'); row.style.transform = ''; };
+  const resetRow = (row)=>{ if (!row) return; row.classList.remove('swiping'); void row.offsetHeight; requestAnimationFrame(()=>{ row.style.transform = 'translate3d(0,0,0)'; }); };
   const clearPress = (keepRow=false)=>{
     if (pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
     if (pressedRow && swiping) resetRow(pressedRow);
