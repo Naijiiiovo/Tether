@@ -3176,7 +3176,7 @@ function renderLetters(){
 
   const visible = sorted.slice(0, lettersShownCount);
   const hasMore = sorted.length > visible.length;
-  list.innerHTML = visible.map(letterHTML).join('') + (hasMore ? `<button class="mini" id="lettersLoadMoreBtn" style="width:100%;justify-content:center;margin-top:6px;">加载更多（还有 ${sorted.length - visible.length} 封）</button>` : '');
+  list.innerHTML = visible.map(letterHTML).join('') + (hasMore ? `<button id="lettersLoadMoreBtn" style="width:100%;margin-top:14px;padding:13px;border-radius:16px;border:none;background:var(--card);color:var(--accent);font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(20,20,30,.06);transition:transform .15s, box-shadow .15s;">加载更多（还有 ${sorted.length - visible.length} 封）</button>` : '');
 list.querySelectorAll('.letter-card').forEach(card=>{
   card.addEventListener('click', (e)=>{
     if (lettersMultiMode){ e.preventDefault(); e.stopPropagation(); toggleLetterMulti(card.dataset.id); return; }
@@ -3198,7 +3198,7 @@ list.querySelectorAll('.letter-card').forEach(card=>{
   card.addEventListener('contextmenu', e=>e.preventDefault());
 });
   const moreBtn = document.getElementById('lettersLoadMoreBtn');
-  if (moreBtn) moreBtn.addEventListener('click', ()=>{ lettersShownCount += lettersPageSize; renderLetters(); });
+  if (moreBtn) moreBtn.addEventListener('click', ()=>{ lettersShownCount += 5; renderLetters(); });
   if (lettersMultiMode) updateLettersMultiUI();
 }
 document.querySelectorAll('#lettersFilter [data-letter-filter]').forEach(btn=>{
